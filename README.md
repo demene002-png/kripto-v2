@@ -1,4 +1,6 @@
-# Kripto V2 — 0.1.0 ilk sanal deneme paketi
+# Kripto V2 — 0.1.1 sanal deneme paketi
+
+**Mevcut kurulumdan güncelliyorsanız önce `GUNCELLEME-0.1.1.md` dosyasını okuyun. SQL'i yeniden çalıştırmayın.** Giriş bağlantısı için açık `.js` API yolları ve Türkçe HTTP hata kontrolleri eklendi; toplam 38 yerel test geçti. Canlı Vercel doğrulaması henüz yapılmadı.
 
 **1.000 USDT sanal başlangıç · 1x–50x · yükseliş/düşüş · günlük kâr hedefi yok.**
 

@@ -1,8 +1,8 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
-import app from '../api/app.mjs';import cron from '../api/cron.mjs';import research from '../api/research.mjs';
-const routes={'/api/app':app,'/api/cron':cron,'/api/research':research};const publicRoot=resolve('public');
+import app from '../api/v2-app.js';import cron from '../api/v2-cron.js';import research from '../api/v2-research.js';import health from '../api/health.js';
+const routes={'/api/app':app,'/api/cron':cron,'/api/research':research,'/api/v2-app':app,'/api/v2-cron':cron,'/api/v2-research':research,'/api/health':health};const publicRoot=resolve('public');
 http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,'http://localhost');req.query=Object.fromEntries(url.searchParams);

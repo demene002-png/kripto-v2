@@ -1,9 +1,13 @@
 import {randomUUID} from 'node:crypto';
 import {initialState} from '../core/engine.mjs';
 export function config() {
-  const url=process.env.SUPABASE_URL,key=process.env.SUPABASE_PUBLISHABLE_KEY,secret=process.env.SUPABASE_SECRET_KEY;
+  const url=process.env.SUPABASE_URL?.trim().replace(/\/+$/,''),key=process.env.SUPABASE_PUBLISHABLE_KEY?.trim(),secret=process.env.SUPABASE_SECRET_KEY?.trim();
   if(!url||!key||!secret||url.includes('YENI-'))throw Error('Önce yeni Supabase projesinin ortam değişkenlerini tanımlayın.');
   if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url))throw Error('Supabase adresi geçersiz.');
+  if(!key.startsWith('sb_publishable_')){
+    let role;try{role=JSON.parse(Buffer.from(key.split('.')[1]||'', 'base64url').toString()).role;}catch{}
+    if(role!=='anon')throw Error('SUPABASE_PUBLISHABLE_KEY alanına yalnız publishable veya anon anahtarını girin.');
+  }
   return {url,key,secret};
 }
 async function request(path,{method='GET',body,key,token}={}) {

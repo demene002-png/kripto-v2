@@ -1,5 +1,15 @@
 # kripto-v2 — Karar kaydı ve devam talimatları
 
+## 0.1.1 — Giriş bağlantısı hata tanılama ve API girişleri
+
+- Kullanıcı giriş ekranında `Unexpected token 'T', "The page c"... is not valid JSON` gösterdi. Kesin gözlem JSON yerine metin gelmesi; hangi isteğin 404 verdiği ekran görüntüsünden saptanamıyor. Yayın URL'si/günlükler henüz görülmedi. `.mjs` desteği yok diye kesin kök neden iddia etmeyin; Vercel `.mjs` destekler.
+- Doğrulanan kod hatası: config/auth isteklerinin yanıtı korunmasız `json()` ile okunuyordu; config geçersiz olsa bile giriş denenebiliyordu. Artık ortak Türkçe HTTP/JSON doğrulayıcı var; config doğrulanmadan parola gönderilmez.
+- Yeni açık ESM `.js` API girişleri: `/api/v2-app`, `/api/v2-research`, `/api/v2-cron`; eski `.mjs` işleyicileri korunur. Eski dosyalar yükleme yoluyla silinmese bile isim çatışması olmaz. Yeni arayüz yeni API yollarını kullanır. Tüm API dosyaları için 60 sn sınırı.
+- `/api/health` kimlik/anahtar göstermeden paket sürümünü döndürür; kurulumu doğrulamak için kullanılır. 404 olması ilgili API'nin yayında olmadığını gösterir, kullanıcı hesabının eksik olduğunu değil.
+- Publishable değişkenine yanlışlıkla sunucu anahtarı konursa config endpoint'i anahtarı döndürmeden reddeder. URL/anahtar etrafındaki boşluklar ve URL sonundaki slash normalize edilir.
+- SQL/tablo/bakiye/muhasebe değişikliği yok. Mevcut kullanıcıyı silmeyin, ilk SQL'i yeniden çalıştırmayın. Tam yeni kaynak paketini aynı V2 deposuna yükleyip yeniden dağıtın.
+- Sekiz bağlantı regresyon testi dahil 38 yerel test ve build geçti; canlı Vercel doğrulaması kullanıcı URL'siyle yapılmalıdır. Bu sürüm dağıtılmış veya giriş sorunu canlıda kesin çözülmüş diye sunulmamalıdır.
+
 ## Yetki ve kimlik
 
 - Kullanıcının onayladığı isim: `kripto-v2`. GitHub hedefi ekranda `deneme002-png/kripto-v2` olarak görüldü. Depoya bağlantı veya yazma bu çalışmada yapılmadı.

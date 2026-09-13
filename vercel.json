@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "public",
-  "functions": { "api/*.mjs": { "maxDuration": 60 } },
+  "functions": { "api/*.{js,mjs}": { "maxDuration": 60 } },
   "headers": [{ "source": "/(.*)", "headers": [
     { "key": "X-Content-Type-Options", "value": "nosniff" },
     { "key": "Referrer-Policy", "value": "same-origin" },

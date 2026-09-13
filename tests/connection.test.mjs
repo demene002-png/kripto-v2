@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {readJson,publicConfig} from '../public/http.js';import health from '../api/health.js';
+import app from '../api/v2-app.js';import original from '../api/app.mjs';import {config} from '../server/db.mjs';
+test('Vercel düz metin 404 hatası Türkçe bağlantı hatasına dönüşür',async()=>{await assert.rejects(readJson(new Response('The page could not be found',{status:404}),'Uygulama bağlantısı'),/Uygulama bağlantısı bulunamadı \(404\)/);});
+test('HTML 200 başarılı giriş gibi değerlendirilmez',async()=>{await assert.rejects(readJson(new Response('<html>Fallback</html>')),/beklenen yanıtı vermedi/);});
+test('401 JSON olmayan yanıt erişim engeli olarak açıklanır',async()=>{await assert.rejects(readJson(new Response('Unauthorized',{status:401})),/erişimi engellendi/);});
+test('Geçerli JSON değişmeden döner, şifre hatası Türkçeleşir',async()=>{assert.deepEqual(await readJson(new Response('{"ok":true}')),{ok:true});await assert.rejects(readJson(new Response('{"code":"invalid_credentials"}',{status:400}),'Supabase giriş bağlantısı'),/E-posta veya şifre yanlış/);});
+test('Config hata gövdesi/eksik adres giriş isteğinde kullanılamaz',()=>{assert.throws(()=>publicConfig({error:'hata'}));assert.throws(()=>publicConfig({url:'https://example.com',key:'x'}));});
+test('Sunucu anahtarı public config olarak sunulmaz',()=>{const old={...process.env};process.env.SUPABASE_URL='https://example.supabase.co';process.env.SUPABASE_PUBLISHABLE_KEY='sb_secret_example';process.env.SUPABASE_SECRET_KEY='sb_secret_server';try{assert.throws(config,/publishable veya anon/);}finally{for(const k of ['SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY','SUPABASE_SECRET_KEY']){if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k];}}});
+test('Yeni JS giriş noktası aynı yetkili hesap işleyicisini kullanır',()=>{assert.equal(app,original);});
+test('Sağlık kontrolü gizli değer içermez, sürümü döndürür',()=>{const res={setHeader(){},status(n){this.code=n;return this;},json(x){this.body=x;}};health({},res);assert.deepEqual(res.body,{ok:true,version:'0.1.1',mode:'PAPER',service:'kripto-v2'});});

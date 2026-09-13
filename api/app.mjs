@@ -5,7 +5,7 @@ function publicState(state){return {...state,equity:equity(state),positions:stat
 export default async function handler(req,res) {
   res.setHeader('Cache-Control','no-store');
   try {
-    if(req.method==='GET'&&req.query?.config==='1'){const c=config();return res.status(200).json({url:c.url,key:c.key,version:'0.1.0'});}
+    if(req.method==='GET'&&req.query?.config==='1'){const c=config();return res.status(200).json({url:c.url,key:c.key,version:'0.1.1'});}
     const uid=await userId(req);
     if(req.method==='GET') {
       const cursor=req.query?.before;

@@ -4,7 +4,7 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net with schema extensions;
 
-select vault.create_secret('https://SIZIN-KRIPTO-V2.vercel.app/api/cron', 'kv2_runner_url');
+select vault.create_secret('https://SIZIN-KRIPTO-V2.vercel.app/api/v2-cron', 'kv2_runner_url');
 select vault.create_secret('VERCELDEKI_EN_AZ_32_KARAKTER_CRON_SECRET', 'kv2_cron_secret');
 
 select cron.schedule('kripto-v2-dakikalik', '* * * * *', $job$
