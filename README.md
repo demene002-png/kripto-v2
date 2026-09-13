@@ -1,4 +1,6 @@
-# Kripto V2 — 0.1.1 sanal deneme paketi
+# Kripto V2 — 0.1.2 sanal deneme paketi
+
+**Otomatik kontrol güncellemesi: `GUNCELLEME-0.1.2.md`.** Sayfa açıkken otomatik tarama; sayfa kapalıyken `supabase/003_otomatik_kontrol.sql` ile kurulan zamanlayıcı. 451 erişim reddi bu güncellemeyle giderilmez. İlk kurulum SQL'ini tekrar çalıştırmayın.
 
 **Mevcut kurulumdan güncelliyorsanız önce `GUNCELLEME-0.1.1.md` dosyasını okuyun. SQL'i yeniden çalıştırmayın.** Giriş bağlantısı için açık `.js` API yolları ve Türkçe HTTP hata kontrolleri eklendi; toplam 38 yerel test geçti. Canlı Vercel doğrulaması henüz yapılmadı.
 

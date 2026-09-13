@@ -1,5 +1,18 @@
 # kripto-v2 — Karar kaydı ve devam talimatları
 
+## 0.1.2 — Otomatik kontrol ve kontrollü yeniden deneme
+
+- Kullanıcı tarama bölümünün otomatik kontrol etmesini istedi. Ekranda login sonrası Binance 451 görüldü; kurulumun API/hesap aşamasına ulaşmış olduğu görülebiliyor. 451 sebebi veya coğrafi erişim çözümü varsayılmadı.
+- Oturum açık, görünür sayfa normalde 60–75 saniyede bir sunucu taramasını tetikler. 15 saniyelik panel yoklaması yalnız hesap durumunu yeniler; her yoklama piyasa taraması değildir.
+- Veri hatasında 2/4/8/15 dakika kademeli bekleme Supabase state içinde kalıcıdır. Başarıda 60 saniye. Açık pozisyonun veri/koruma girişimi en az dakikalık planlanır; giriş beklemesi bunu uzatmaz. Koruma yine gözlenen fiyat ve veri erişimiyle sınırlıdır.
+- Sayfa görünmez veya kapalıyken sürekli çalıştığı iddia edilmez. Ayrı 003 SQL, bilinen `kripto-v2.vercel.app` adresine pg_cron/pg_net kurar; aynı isimli Vault kayıtlarını çoğaltmaz, aynı isimli cron işini günceller. CRON_SECRET sunucudakiyle aynı olmalı, kullanıcı sırrı paylaşmamalı.
+- Otomatik kontrol, `settings.auto` alanını değiştirmez. Kullanıcı sadece kontrol istedi; otomatik işlem açmayı kendiliğinden etkinleştirmeyin.
+- Piyasa 451 erişim reddi devam ediyor; bu özellik engeli kaldırmaz. Alternatif host, VPN/proxy veya erişim engelini atlatma eklenmedi.
+- 001 SQL yeniden çalıştırılmaz. Yeni alanlar JSON hesap durumundadır. Hesap, bakiye, açık pozisyon ve geçmiş korunur.
+- Canlı cron kurulumu henüz yapılmadı. Paket ve ayrı SQL teslim edilir; yerel scheduler testleri canlı dağıtım kanıtı olarak sunulmaz.
+- Aynı turda kullanıcı ayar panelini sadeleştirmeyi istedi: ana görünümde auto/leverage/maxPositions; diğer tüm alanlar kapalı başlayan Gelişmiş ayarlar altında. Kayıtlı risk yüzdeleri özet olarak görünür. Ayarlar silinmez veya kendiliğinden değişmez. Form doğrulamasında gelişmiş alanda hata varsa bölüm açılır.
+- Yedi yeni zamanlama testi dahil toplam 45 yerel test ve build başarılı. Görsel tarayıcı testi bu ortamda hâlâ doğrulanmadı.
+
 ## 0.1.1 — Giriş bağlantısı hata tanılama ve API girişleri
 
 - Kullanıcı giriş ekranında `Unexpected token 'T', "The page c"... is not valid JSON` gösterdi. Kesin gözlem JSON yerine metin gelmesi; hangi isteğin 404 verdiği ekran görüntüsünden saptanamıyor. Yayın URL'si/günlükler henüz görülmedi. `.mjs` desteği yok diye kesin kök neden iddia etmeyin; Vercel `.mjs` destekler.

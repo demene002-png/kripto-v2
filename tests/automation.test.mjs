@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {nextCheckAt,shouldCheck,pageMayCheck,scheduleFailure,scheduleSuccess} from '../public/automation.js';
+import {initialState} from '../core/engine.mjs';import {tick} from '../server/runner.mjs';
+const now=Date.UTC(2026,8,13,12);
+test('İlk hesap hemen kontrol edilir, yakın tarihli tur tekrarlanmaz',()=>{const a=initialState(now);assert.equal(shouldCheck(a,now),true);a.lastRun=now;assert.equal(shouldCheck(a,now+59999),false);assert.equal(shouldCheck(a,now+60000),true);});
+test('Sayfa kontrolü oturum, görünürlük ve önizleme sınırlarına uyar',()=>{const state=initialState(now),base={state,now,authenticated:true,preview:false,visible:true,busy:false};assert.equal(pageMayCheck(base),true);for(const patch of [{authenticated:false},{preview:true},{visible:false},{busy:true},{lastAttempt:now-30000}])assert.equal(pageMayCheck({...base,...patch}),false);});
+test('Veri hataları 2/4/8/15 dakika bekler, başarı normal aralığa döner',()=>{const a=initialState(now);for(const min of [2,4,8,15,15]){scheduleFailure(a,now);assert.equal(a.nextScanAt,now+min*60000);}scheduleSuccess(a,now);assert.equal(a.scanFailures,0);assert.equal(a.nextScanAt,now+60000);});
+test('Yeniden deneme zamanı sayfa yenilemesinden sonra korunur',()=>{const a=initialState(now);a.lastRun=now;scheduleFailure(a,now);const restored=JSON.parse(JSON.stringify(a));assert.equal(shouldCheck(restored,now+60000),false);assert.equal(shouldCheck(restored,now+120000),true);});
+test('Açık pozisyon kontrolü giriş beklemesinden bağımsız dakikalıktır',()=>{const a=initialState(now);a.lastRun=now;a.lastProtectionAt=now;a.positions=[{id:'p'}];a.nextScanAt=now+900000;assert.equal(nextCheckAt(a),now+60000);});
+test('Kontrol planlamak otomatik işlem açma ayarını değiştirmez',()=>{const a=initialState(now);scheduleFailure(a,now);scheduleSuccess(a,now);assert.equal(a.settings.auto,false);assert.equal(a.balance,1000);});
+test('Sunucu aynı turu veya erken hatalı tekrarını ağ erişimi olmadan atlar',async()=>{const a=initialState(Date.now());a.lastRun=Date.now();a.nextScanAt=Date.now()+120000;const copy=structuredClone(a);const result=await tick(a);assert.equal(result.skipped,true);assert.deepEqual(a,copy);});

@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {signal,regime,correlation,positionPlan,openPosition,applyFunding,manageQuote,closePosition,snapshot,entryBlocks} from '../core/engine.mjs';
 import * as market from './market.mjs';
+import {shouldCheck,scheduleSuccess,scheduleFailure} from '../public/automation.js';
 async function protect(a,now) {
   const results=await Promise.allSettled(a.positions.map(async p=>{const [q,rates]=await Promise.all([market.quote(p.symbol),market.funding(p.symbol,p.lastFunding+1,now)]);return {id:p.id,q,rates};}));
   for(const result of results){if(result.status!=='fulfilled')continue;const r=result.value,p=a.positions.find(x=>x.id===r.id);applyFunding(a,p,r.rates,now);manageQuote(a,p,r.q,now);}
@@ -16,11 +17,14 @@ export async function closeManual(a,id) {
   const trade=protectedExit||closePosition(a,id,p.side===1?q.bid:q.ask,'MANUEL',now);snapshot(a,now);return trade;
 }
 export async function tick(a) {
-  const started=Date.now();if(a.lastRun&&started-a.lastRun<45000)throw Error('Yeni tarama için önceki taramadan en az 45 saniye geçmeli.');
+  const started=Date.now();if(!shouldCheck(a,started))return {skipped:true,nextCheckAt:a.nextScanAt||a.lastRun+60000};
+  const entryRetryPending=started<(a.nextScanAt||0);
   a.lastRun=started;
   try {
+    a.lastProtectionAt=started;
     await protect(a,started);
-    if(entryBlocks(a,started).length){a.lastError=null;a.status=entryBlocks(a,started).join(' · ');return;}
+    if(entryRetryPending){a.status='Açık pozisyonlar kontrol edildi; piyasa taraması yeniden deneme saatini bekliyor';return;}
+    if(entryBlocks(a,started).length){a.lastError=null;a.status=entryBlocks(a,started).join(' · ');scheduleSuccess(a,started);return;}
     if(Date.now()-started>14000)throw Error('Koruma tamamlandı; tarama sonraki tura bırakıldı.');
     const list=await market.universe(a.settings);if(!list.length)throw Error('Kalite filtresini geçen sözleşme yok.');
     const batch=[list[a.scanCursor%list.length],list[(a.scanCursor+1)%list.length]].filter((x,i,arr)=>arr.findIndex(y=>y.symbol===x.symbol)===i);
@@ -52,7 +56,7 @@ export async function tick(a) {
       if(plan.accepted&&a.settings.auto){openPosition(a,plan,randomUUID());c.record.action='ACILDI';}
       else if(plan.accepted){c.record.action='UYGUN';c.record.reasons=['Otomatik işlem kapalı'];}
     }
-    a.signals=a.signals.slice(-100);a.lastError=null;a.status=`${batch.length} coin incelendi · ${list.length} uygun sözleşme`;
-  }catch(e){a.lastError=e.message;a.status='Veri/çalıştırma sorunu; yeni işlem açılmadı';}
+    a.signals=a.signals.slice(-100);a.lastError=null;a.status=`${batch.length} coin incelendi · ${list.length} uygun sözleşme`;scheduleSuccess(a,Date.now());
+  }catch(e){a.lastError=e.message;a.status='Veri/çalıştırma sorunu; otomatik yeniden deneme bekleniyor';scheduleFailure(a,Date.now());}
   snapshot(a,Date.now());
 }

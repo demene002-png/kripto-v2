@@ -11,6 +11,6 @@ export default async function handler(req,res) {
     const rows=await select('kv2_accounts','select=user_id&order=updated_at.asc&limit=1');
     if(!rows.length)return res.status(200).json({ok:true,message:'Henüz hesap yok.'});
     const r=await withAccount(rows[0].user_id,tick);
-    return res.status(r.state.lastError?503:200).json({ok:!r.state.lastError,message:r.state.lastError||r.state.status});
+    return res.status(r.output?.skipped?200:r.state.lastError?503:200).json({ok:r.output?.skipped?true:!r.state.lastError,skipped:!!r.output?.skipped,nextCheckAt:r.state.nextScanAt,message:r.state.lastError||r.state.status});
   }catch(e){return res.status(503).json({error:e.message});}
 }
