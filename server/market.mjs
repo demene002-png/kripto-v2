@@ -1,11 +1,12 @@
 import {eligible} from '../core/engine.mjs';
+import {fetchText} from './transport.mjs';
 const BASE='https://fapi.binance.com';
 const ALLOWED=new Set(['/fapi/v1/exchangeInfo','/fapi/v1/ticker/24hr','/fapi/v1/ticker/bookTicker','/fapi/v1/premiumIndex','/fapi/v1/klines','/fapi/v1/markPriceKlines','/fapi/v1/fundingRate']);
 export async function publicGet(path,params={},fetcher=fetch) {
   if(!ALLOWED.has(path))throw Error('Bu Binance yolu izinli değil.');
-  const response=await fetcher(`${BASE}${path}?${new URLSearchParams(params)}`,{method:'GET',signal:AbortSignal.timeout(4000)});
+  const {response,text}=await fetchText(`${BASE}${path}?${new URLSearchParams(params)}`,{method:'GET'},{label:`Binance — ${path.split('/').at(-1)}`,timeoutMs:4000,fetcher});
   if(!response.ok)throw Error(`Binance verisi alınamadı (${response.status}). İşlem açılmadı.`);
-  const data=await response.json();if(data?.code<0)throw Error('Binance veri hatası.');return data;
+  let data;try{data=JSON.parse(text);}catch{throw Error('Binance yanıtı okunamadı.');}if(data?.code<0)throw Error('Binance veri hatası.');return data;
 }
 export async function universe(settings) {
   const [info,tickers]=await Promise.all([publicGet('/fapi/v1/exchangeInfo'),publicGet('/fapi/v1/ticker/24hr')]);

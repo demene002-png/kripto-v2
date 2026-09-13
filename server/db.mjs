@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {initialState} from '../core/engine.mjs';
+import {fetchText} from './transport.mjs';
 export function config() {
   const url=process.env.SUPABASE_URL?.trim().replace(/\/+$/,''),key=process.env.SUPABASE_PUBLISHABLE_KEY?.trim(),secret=process.env.SUPABASE_SECRET_KEY?.trim();
   if(!url||!key||!secret||url.includes('YENI-'))throw Error('Önce yeni Supabase projesinin ortam değişkenlerini tanımlayın.');
@@ -11,8 +12,9 @@ export function config() {
   return {url,key,secret};
 }
 async function request(path,{method='GET',body,key,token}={}) {
-  const c=config();const r=await fetch(c.url+path,{method,headers:{apikey:key||c.secret,...(token?{Authorization:`Bearer ${token}`} : c.secret.startsWith('eyJ')?{Authorization:`Bearer ${c.secret}`} : {}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(5000)});
-  const text=await r.text();let data;try{data=text?JSON.parse(text):null;}catch{throw Error('Supabase yanıtı okunamadı.');}
+  const operation=path.startsWith('/auth/')?'oturum doğrulama':path.includes('/rpc/kv2_acquire')?'hesap kilidi alma':path.includes('/rpc/kv2_commit')?'hesap ve işlem geçmişi kaydetme':path.includes('/rpc/kv2_release')?'hesap kilidi bırakma':method==='GET'?'kayıt okuma':'kayıt yazma';
+  const c=config();const {response:r,text}=await fetchText(c.url+path,{method,headers:{apikey:key||c.secret,...(token?{Authorization:`Bearer ${token}`} : c.secret.startsWith('eyJ')?{Authorization:`Bearer ${c.secret}`} : {}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})},{label:`Supabase — ${operation}`,timeoutMs:5000,retryRead:true});
+  let data;try{data=text?JSON.parse(text):null;}catch{throw Error(`Supabase — ${operation}: yanıt okunamadı.`);}
   if(!r.ok){if(data?.message?.includes('KV2_'))throw Error(data.message);throw Error(`Supabase işlemi başarısız (${r.status}).`);}return data;
 }
 export const rpc=(name,body)=>request(`/rest/v1/rpc/${name}`,{method:'POST',body});

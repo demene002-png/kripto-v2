@@ -94,3 +94,10 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 ## Geri dönüş
 
 Önce yeni girişleri duraklatın, gerekiyorsa açık sanal pozisyonları kapatın, yalnız `kripto-v2-dakikalik` cron işini durdurun. V2 GitHub/Vercel sürümünü önceki uyumlu sürüme döndürün. `kv2_events` ve hesap tablolarını silmeyin. Eski `kripto`ya dokunmayın. Muhasebe hatası geçmişi silmekle giderilmez; ayrı telafi olayı ve yeni migration gerekir.
+# 0.1.3 — Zaman aşımı teşhisi
+
+- 401 sonrasında görülen 503 dış hata gövdesi, genel TimeoutError içeriyor. Canlı hata aşaması kesinleştirilmedi.
+- Ortak taşıma katmanı Supabase operasyon adı ve Binance public yol adıyla Türkçe hata döndürür; sırlar/ham bağlantı mesajı dışarı verilmez.
+- Yalnız Supabase GET için en fazla iki toplam deneme, her biri 5 saniye. POST mutasyonları ve Binance çağrıları otomatik tekrarlanmaz. Yanıt kaybı sonrası çift işlem riski nedeniyle yazma tekrarına izin verilmez.
+- Sınırlar, hesap kilidi ve revizyon kontrolü korunur. Şema/SQL, anahtar, bakiye, kullanıcı ayarı değişmez. Önceki dağıtıma dönüş yeterlidir.
+- Testler: okuma kurtarma ve üst sınırı, yanıt okuma zaman aşımı sonrası yazmanın tekrarlanmaması, HTTP hatasının tekrarlanmaması, gizli veri sızmaması, Binance 451, Supabase gerçek sarmalayıcı entegrasyonu. Canlı dağıtım ve bağlantı henüz doğrulanmadı.
