@@ -1,0 +1,4 @@
+project_id = "kripto-v2"
+
+[db.migrations]
+enabled = true
