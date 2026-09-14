@@ -6,11 +6,13 @@ export const DEFAULTS = Object.freeze({auto:false, paused:false, leverage:5, ris
   minScore:80, minVotes:3, atrMult:2, rewardRisk:2, feeRate:0.0005, slippageBps:5,
   maintenanceRate:0.01, maxSpreadBps:8, minVolume:20000000, cooldownMinutes:60});
 export const STRATEGIES = ['trend','momentum','breakout','pullback'];
+export const PROFIT_PROTECTION = Object.freeze({costTriggerR:0.5,trailTriggerR:1,trailDistanceR:0.5,minLockR:0.05});
+export const PULLBACK_ENTRY = Object.freeze({offsetATR:0.3,invalidationATR:1.2,reboundATR:0.12,expiresMs:45*60000,maxPending:3});
 export const STABLE = new Set(['USDT','USDC','FDUSD','TUSD','USDP','DAI','BUSD','USD1','U','USDE','USDS','PYUSD','GUSD','USDD','FRAX','LUSD','USD0','USTC','RLUSD','AEUR','EURI','XUSD','AUSD','BFUSD','USDX','EUR','TRY','BRL','GBP','AUD','USDD1','USDF']);
 export const round = x => Math.round((x + Number.EPSILON) * 1e8) / 1e8;
 export const mean = a => a.reduce((x,y)=>x+y,0)/Math.max(1,a.length);
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-export function initialState(now=Date.now()) {return {version:VERSION,balance:1000,peak:1000,day:dayKey(now),dayStartEquity:1000,settingsVersion:0,settings:{...DEFAULTS},positions:[],trades:[],events:[],signals:[],curve:[],scanCursor:0,lastRun:null,lastError:null,circuit:null};}
+export function initialState(now=Date.now()) {return {version:VERSION,balance:1000,peak:1000,day:dayKey(now),dayStartEquity:1000,settingsVersion:0,settings:{...DEFAULTS},positions:[],pendingEntries:[],trades:[],events:[],signals:[],curve:[],scanCursor:0,lastRun:null,lastError:null,circuit:null};}
 export function dayKey(t) {return new Date(t+3*3600000).toISOString().slice(0,10);}
 export function eligible(s) {return s?.status==='TRADING'&&s.contractType==='PERPETUAL'&&s.quoteAsset==='USDT'&&s.marginAsset==='USDT'&&!STABLE.has(s.baseAsset)&&!/(UP|DOWN|BULL|BEAR)$/.test(s.baseAsset);}
 export function validateSettings(old,patch) {
@@ -76,6 +78,32 @@ export function entryBlocks(a,now) {
   const recent=a.trades.slice(-3);if(recent.length===3&&recent.every(x=>x.net<0)&&now-recent.at(-1).closedAt<3600000)r.push('Ardışık zarar beklemesi');
   return r;
 }
+export function createPendingEntry(sig,meta,now,scale=1) {
+  if(!sig?.accepted||![sig.reference,sig.atr].every(x=>Number.isFinite(x)&&x>0))throw Error('Bekleyen giriş için geçerli sinyal gerekli.');
+  return {symbol:meta.symbol,meta,side:sig.side,signal:sig,scale,createdAt:now,expiresAt:now+PULLBACK_ENTRY.expiresMs,
+    trigger:round(sig.reference-sig.side*sig.atr*PULLBACK_ENTRY.offsetATR),invalidation:round(sig.reference-sig.side*sig.atr*PULLBACK_ENTRY.invalidationATR),
+    extreme:sig.reference,touched:false,ready:false,lastCheckedAt:null};
+}
+export function observePendingEntry(p,mark,now) {
+  if(!Number.isFinite(mark)||mark<=0)throw Error('Bekleyen giriş fiyatı geçersiz.');
+  if(now>=p.expiresAt)return {action:'IPTAL',reason:'Geri çekilme bekleme süresi doldu'};
+  p.lastCheckedAt=now;p.extreme=p.side===1?Math.min(p.extreme,mark):Math.max(p.extreme,mark);
+  if(p.side*(mark-p.invalidation)<=0)return {action:'IPTAL',reason:'Geri çekilme güvenli bölgeyi aştı'};
+  if(p.side*(mark-p.trigger)<=0)p.touched=true;
+  if(!p.touched)return {action:'BEKLE',reason:'Geri çekilme fiyatı bekleniyor'};
+  const rebound=p.side*(mark-p.extreme);
+  if(rebound<p.signal.atr*PULLBACK_ENTRY.reboundATR)return {action:'BEKLE',reason:'Fiyatın güvenli yönde toparlanması bekleniyor'};
+  p.ready=true;return {action:'HAZIR',reason:'Geri çekilme ve toparlanma doğrulandı'};
+}
+export function pendingConfirmationReasons(p,current,settings,globalRegime=current.regime) {
+  const reasons=[];
+  if(current.side!==p.side)reasons.push('Sinyal yönü değişti');
+  if(current.regime!==(p.side===1?'YUKSELIS':'DUSUS'))reasons.push('Piyasa eğilimi geri çekilmede bozuldu');
+  if(globalRegime==='ASIRI_OYNAK'||globalRegime==='YUKSELIS'&&p.side===-1||globalRegime==='DUSUS'&&p.side===1)reasons.push('Bitcoin piyasa koşulu uygun değil');
+  if(current.count<Math.max(2,settings.minVotes-1)||current.score<Math.max(70,settings.minScore-20))reasons.push('Geri çekilme sonrası teyit yetersiz');
+  if(current.reasons.includes('Hacim teyidi zayıf'))reasons.push('Hacim teyidi zayıf');
+  return reasons;
+}
 export function positionPlan(a,sig,quote,meta,now,correlationScale=1) {
   const s=a.settings,reasons=[...entryBlocks(a,now),...sig.reasons];
   if(!eligible(meta))reasons.push('Coin işlem evrenine uygun değil');
@@ -99,7 +127,7 @@ export function positionPlan(a,sig,quote,meta,now,correlationScale=1) {
   const minNotional=Number(meta.filters.find(f=>f.filterType==='MIN_NOTIONAL')?.notional||5);
   if(qty<Number(lot.minQty)||qty>Number(lot.maxQty)||notional<minNotional||qty<=0)reasons.push('Risk bütçesi veya miktar sınırı uygun değil');
   const fee=notional*s.feeRate;
-  const p={symbol:meta.symbol,side:sig.side,qty,entry,stop,target,initialStop:stop,initialMargin:margin,margin,leverage:s.leverage,entryFee:fee,feeRate:s.feeRate,slippageBps:s.slippageBps,maintenanceRate:s.maintenanceRate,funding:0,lastFunding:now,openedAt:now,mark,markTime:quote.time,votes:sig.votes,regime:sig.regime,score:sig.score};
+  const p={symbol:meta.symbol,side:sig.side,qty,entry,stop,target,initialStop:stop,bestMark:entry,protectionStage:null,protectedAt:null,initialMargin:margin,margin,leverage:s.leverage,entryFee:fee,feeRate:s.feeRate,slippageBps:s.slippageBps,maintenanceRate:s.maintenanceRate,funding:0,lastFunding:now,openedAt:now,mark,markTime:quote.time,votes:sig.votes,regime:sig.regime,score:sig.score};
   const liq=qty?liquidationPrice(p):0;
   if(qty&&sig.side*(stop-liq)<entry*0.003)reasons.push('Stop ile tahmini tasfiye arasında yeterli mesafe yok; kaldıracı azaltın');
   if(stopDist*s.rewardRisk-entry*s.feeRate*2-entry*s.slippageBps*2/10000<perUnit*1.2)reasons.push('Masraf sonrası getiri/risk yetersiz');
@@ -127,12 +155,35 @@ export function closePosition(a,id,price,reason,now) {
   a.balance=round(a.balance+returned);a.positions=a.positions.filter(x=>x.id!==id);a.trades.push(trade);a.trades=a.trades.slice(-200);
   a.events.push({id:`close:${id}`,kind:'CLOSE',at:now,symbol:p.symbol,amount:trade.net,trade});return trade;
 }
+export function updateProfitProtection(a,p,observed,now) {
+  if(!Number.isFinite(observed)||observed<=0)return false;
+  const risk=Math.abs(p.entry-(p.initialStop??p.stop));if(!(risk>0))return false;
+  const previousBest=Number.isFinite(p.bestMark)?p.bestMark:p.entry;
+  p.bestMark=p.side===1?Math.max(previousBest,observed):Math.min(previousBest,observed);
+  const favorable=p.side*(p.bestMark-p.entry),cost=PROFIT_PROTECTION.costTriggerR*risk,trail=PROFIT_PROTECTION.trailTriggerR*risk;
+  let candidate=null,stage=null;
+  if(favorable>=cost) {
+    const simulatedCosts=p.entry*(p.feeRate*2+p.slippageBps*2/10000);
+    candidate=p.entry+p.side*(simulatedCosts+PROFIT_PROTECTION.minLockR*risk);stage='MASRAF_KORUMA';
+  }
+  if(favorable>=trail) {
+    const trailing=p.bestMark-p.side*PROFIT_PROTECTION.trailDistanceR*risk;
+    candidate=p.side===1?Math.max(candidate,trailing):Math.min(candidate,trailing);stage='KAR_KILITLI';
+  }
+  if(candidate===null)return false;
+  const improved=p.side===1?candidate>p.stop:candidate<p.stop;
+  if(!improved)return false;
+  const oldStage=p.protectionStage;p.stop=round(candidate);p.protectionStage=stage;p.protectedAt=now;
+  if(stage!==oldStage)a.events.push({id:`protection:${p.id}:${stage}`,kind:'PROTECTION',at:now,symbol:p.symbol,stage,stop:p.stop,bestMark:p.bestMark});
+  return true;
+}
 export function manageQuote(a,p,q,now) {
   if(Math.abs(now-q.time)>15000)throw Error('Pozisyon fiyatı güncel değil.');
   p.mark=q.mark;p.markTime=q.time;
   const liquidated=p.margin+grossPnl(p,q.mark)<=p.qty*q.mark*(p.maintenanceRate+p.feeRate);
   const stopHit=p.side*(q.mark-p.stop)<=0,targetHit=p.side*(q.mark-p.target)>=0;
-  if(liquidated||stopHit||targetHit)return closePosition(a,p.id,p.side===1?q.bid:q.ask,liquidated?'TASFIYE':stopHit?'ZARAR_DURDUR':'KAR_AL',now);
+  if(liquidated||stopHit||targetHit)return closePosition(a,p.id,p.side===1?q.bid:q.ask,liquidated?'TASFIYE':stopHit?(p.protectionStage?'KAR_KORUMA':'ZARAR_DURDUR'):'KAR_AL',now);
+  updateProfitProtection(a,p,q.mark,now);
   return null;
 }
 export function snapshot(a,now) {const eq=updateRiskClock(a,now);a.curve.push({t:now,equity:eq});a.curve=a.curve.slice(-500);return eq;}

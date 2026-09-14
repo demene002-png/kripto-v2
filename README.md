@@ -148,3 +148,23 @@ Kurulum sırası:
 Kilit alma 503/504 veya bağlantı hatası verirse aynı güvenli anahtarla yalnız bir ek deneme yapılır. Bakiye/işlem geçmişi kaydeden commit çağrısı tekrar gönderilmez. İki deneme de başarısızsa cron 503 döndürmeye devam eder; hata gizlenmez.
 
 Geri dönüşte önce Vercel'i 0.1.8'e alın. Gerekirse ardından `supabase/005_geri_al.sql` çalıştırın. Hesap tablolarını silmeyin.
+
+## 0.2.0 güncellemesi — Kâr koruma
+
+Bu sürüm için yeni SQL ve ortam değişkeni gerekmez. ZIP içeriğini GitHub deposunun köküne yükleyip Vercel dağıtımını tamamlayın. `/api/health` sürümü 0.2.0 olmalıdır.
+
+- 0,5R lehte hareket: komisyon ve kayma payını aşan masraf koruma stopu.
+- 1R lehte hareket: en iyi gözlenen fiyatın 0,5R gerisinden hareketli stop.
+- Stop geri yönde gevşemez; tetiklenen kapanış geçmişte “Kâr koruma” olarak görünür.
+- Eski açık pozisyonlar korunur ve ilk başarılı kontrolde yeni kurala alınır.
+- Strateji laboratuvarı yeni korumalı çıkışı eski sabit stop/hedef modeliyle karşılaştırır.
+
+Kontrol dakikalık gözlenen fiyatlarla yapılır. Arada görülmeyen fiyat hareketi, fiyat boşluğu ve simüle edilen kayma nedeniyle ekranda anlık görülen kârın tamamı garanti edilmez. Geri dönüş için Vercel'de 0.1.9 dağıtımını yeniden yayımlayın; veritabanına müdahale etmeyin.
+
+## 0.3.0 güncellemesi — Uygun giriş fiyatını bekleme
+
+Güçlü sinyal artık hemen işleme dönüşmez. Yükseliş yönünde fiyatın 0,3 ATR geri çekilmesi, ardından 0,12 ATR toparlanması beklenir. Düşüş yönünde kurallar ters yönde uygulanır. 1,2 ATR yön bozulması veya 45 dakika sonunda fırsat iptal edilir.
+
+Toparlanma sonrasında strateji, piyasa yönü, hacim, Bitcoin koşulu, korelasyon, spread ve risk kontrolleri yeniden çalışır. Fiyat geri çekilmezse işlem açılmaz. Bekleyen fırsatlar karar tablosunda Türkçe gösterilir.
+
+Yeni SQL veya ortam değişkeni gerekmez. ZIP içeriğini depoya yükleyip Vercel dağıtımından sonra `/api/health` sürümünün 0.3.0 olduğunu kontrol edin. Geri dönüş için 0.2.0 dağıtımını yeniden yayımlayın.

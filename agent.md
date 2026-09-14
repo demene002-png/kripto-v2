@@ -148,3 +148,26 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - Hata iki denemede de sürerse ayrıntı retried=true ile görünür; başarısız tur başarı gibi gösterilmez. Bu, geçici 504'e dayanıklılık sağlar; Supabase platformundaki temel 504 nedeninin ortadan kalktığı iddia edilmez.
 - Geri dönüş: önce Vercel 0.1.8'e alınır; gerekirse 005_geri_al.sql uygulanır. Tablo veya olaylar silinmez.
 - 78 yerel test ve derleme geçti. İlk 504 + aynı token ikinci başarı, iki 504'te durma, mutasyon tekrar etmeme ve mevcut finans testleri doğrulandı. Canlı Supabase sonucu dağıtımdan sonra ölçülmeli.
+
+# 0.2.0 — Kâr koruma ve hareketli stop
+
+- Kullanıcı açık işlemlerde toplam 3,46 USDT kâr görüp hedef beklenirken pozisyonların zarara döndüğünü bildirdi. Sabit 2R hedef ve ilk stop dışında kârı koruyan kural olmadığı koddan doğrulandı.
+- Her pozisyon en iyi gözlenen mark fiyatını kalıcı state içinde tutar. Fiyat başlangıç riskinin 0,5 katı kadar lehe ilerlediğinde tahmini iki yön komisyonu, iki yön kayma ve 0,05R kâr payını aşan stop etkinleşir. Fiyat 1R ilerlediğinde stop, en iyi gözlenen fiyatı 0,5R geriden takip eder. Stop yalnız risk azaltan yönde hareket eder.
+- Korunan stop tetiklenirse kapanış nedeni `KAR_KORUMA` olur. Masraf koruması ve kâr kilidi aşamaları arayüzde açık pozisyonda görünür. Her aşamanın ilk etkinleşmesi değiştirilemez olay defterine bir kez yazılır; her fiyat adımı için olay üretilmez.
+- Kaldıraç kâr hesabına ikinci kez uygulanmaz. Kâr koruma fiyatı gerçek emir değildir; yalnız dakikalık başarılı kontrollerde gözlenen mark fiyatıyla güncellenir. Fiyat boşluğu, alış-satış farkı, kayma veya kontrol kesintisi görülen kârın tamamının korunmasını garanti etmez.
+- Güncellemeden önce açılmış pozisyonlar silinmez. İlk başarılı koruma turunda eksik bestMark alanı giriş fiyatından başlatılır; geçmişte görülüp state'e kaydedilmemiş tepe fiyat uydurulmaz.
+- Geçmiş test aynı kuralı kullanır. Mum içi yol bilinmediği için mevcut stop ve hedef önce değerlendirilir; o mumun lehteki uç fiyatından oluşan yeni koruma seviyesi sonraki mumda geçerli olur. Laboratuvar kâr korumalı ve eski sabit çıkış sonuçlarını ayrı gösterir.
+- 83 yerel test ve derleme geçti: long/short, maliyet sonrası pozitif koruma kapanışı, stopun geri gitmemesi, aşama olaylarının tekilliği, eski açık pozisyon uyumu ve geçmiş test karşılaştırması. Canlı sonuç ve kârlılık kanıtı değildir.
+- SQL gerekmez. Geri dönüş için Vercel 0.1.9 dağıtımına dönülür; yeni state alanları eski kod tarafından yok sayılır. Hesap veya olay tabloları silinmez.
+
+# 0.3.0 — Geri çekilme bekleyen giriş
+
+- Kullanıcı güçlü coin yükselmişken alınarak işlemin hemen zararda başladığını bildirdi ve fiyatın düşmesinin beklenmesini istedi. Önceki runner, sinyal ve anlık fiyat kontrolleri geçince doğrudan sanal pozisyon açıyordu.
+- Güçlü sinyal artık en fazla 3 kalıcı bekleyen fırsattan birine dönüşür. Yükseliş işleminde giriş bölgesi sinyal fiyatının 0,3 ATR altı; düşüş işleminde 0,3 ATR üstüdür. İlk sinyal anında pozisyon açılmaz.
+- Fiyat bölgeye dokunduktan sonra 0,12 ATR güvenli yönde toparlanmadan giriş yapılmaz. Fiyat sinyalin tersine 1,2 ATR giderse veya 45 dakika dolarsa fırsat iptal edilir. Fiyat hiç geri çekilmezse işlem kaçırılabilir; tepeden kovalanmaz.
+- Toparlanma sonrasında yön, ana piyasa eğilimi, hacim, strateji teyidi, Bitcoin rejimi, korelasyon, spread, teminat ve risk koşulları yeniden denetlenir. Kırılım oyu geri çekilmede doğal olarak kaybolabileceği için yeniden teyit eşiği kayıtlı sınırdan en fazla bir oy ve 20 puan düşük, tabanda 2 oy/70 puandır.
+- Bekleyen fırsatlar açık pozisyon korumasından sonra ve yeni evren taramasından önce kontrol edilir. Süre bütçesini korumak için bekleyen fırsat varken yeni coin grubu taranmaz. Tur başına yine en fazla bir pozisyon açılır.
+- Arayüz karar geçmişinde “Giriş fiyatı bekleniyor”, “Fırsat iptal edildi” ve açılış gerekçesini Türkçe gösterir. Ayrı gerçek borsa emri veya limit emri oluşturulmaz.
+- Geçmiş test de sinyali doğrudan açmaz. Mum içinde geri çekilme ve kapanıştaki toparlanma gözlenirse giriş en erken sonraki mum açılışında yapılır; geleceği görme kullanılmaz.
+- 87 yerel test hedeflenmiştir: saf bekleme/temas/toparlanma/iptal, yön bozulması, canlı runner'da anında açmama ve daha düşük fiyatlı giriş, geçmiş giriş zamanlaması, finans ve 504 regresyonları. Canlı kârlılık kanıtı değildir.
+- SQL veya ortam değişkeni gerekmez. Vercel 0.2.0 dağıtımına dönmek geri alma için yeterlidir; bekleyen fırsat alanı eski kod tarafından yok sayılır.

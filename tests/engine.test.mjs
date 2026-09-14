@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {initialState,DEFAULTS,eligible,validateSettings,features,positionPlan,openPosition,closePosition,applyFunding,equity,liquidationPrice,manageQuote,entryBlocks,correlation,dayKey} from '../core/engine.mjs';
+import {initialState,DEFAULTS,eligible,validateSettings,features,positionPlan,openPosition,createPendingEntry,observePendingEntry,pendingConfirmationReasons,closePosition,applyFunding,equity,liquidationPrice,manageQuote,entryBlocks,correlation,dayKey} from '../core/engine.mjs';
 import {publicGet,parseCandles} from '../server/market.mjs';
 const now=Date.UTC(2026,8,13,12);
 const meta={symbol:'BTCUSDT',status:'TRADING',contractType:'PERPETUAL',quoteAsset:'USDT',marginAsset:'USDT',baseAsset:'BTC',filters:[{filterType:'MARKET_LOT_SIZE',stepSize:'0.001',minQty:'0.001',maxQty:'100000'},{filterType:'MIN_NOTIONAL',notional:'5'}]};
@@ -26,3 +26,50 @@ test('Binance emir yolları ağ çağrısı yapılmadan reddedilir',async()=>{le
 test('HTTP hata JSONu geçerli piyasa gibi kullanılmaz',async()=>{await assert.rejects(publicGet('/fapi/v1/klines',{},async()=>({ok:false,status:451})));});
 test('İşlemden hemen sonra özsermaye giriş+çıkış maliyetlerini içerir',()=>{const {a,p}=setup();near(equity(a),1000-p.entryFee+p.side*p.qty*(p.mark-p.entry)-p.qty*p.mark*p.feeRate);});
 test('Aynı coin ikinci pozisyon ve cooldown denetlenir',()=>{const {a,p}=setup();assert.equal(positionPlan(a,sig(),{mark:100,bid:100,ask:100,time:now},meta,now).accepted,false);closePosition(a,p.id,100,'MANUEL',now+10);assert.ok(positionPlan(a,sig(),{mark:100,bid:100,ask:100,time:now+20},meta,now+20).reasons.some(x=>x.includes('bekleme')));});
+test('Yarım risk ilerlemede masrafları aşan stop etkinleşir ve geri gitmez',()=>{
+  for(const side of [1,-1]){
+    const {a,p}=setup(side),risk=Math.abs(p.entry-p.initialStop),first=p.stop;
+    assert.equal(manageQuote(a,p,{mark:p.entry+side*risk*.49,bid:p.entry+side*risk*.49,ask:p.entry+side*risk*.49,time:now},now),null);assert.equal(p.stop,first);
+    const favorable=p.entry+side*risk*.5;
+    assert.equal(manageQuote(a,p,{mark:favorable,bid:favorable,ask:favorable,time:now},now),null);assert.equal(p.protectionStage,'MASRAF_KORUMA');assert.ok(side*(p.stop-p.entry)>0);
+    const protectedStop=p.stop;
+    manageQuote(a,p,{mark:p.entry+side*risk*.7,bid:p.entry+side*risk*.7,ask:p.entry+side*risk*.7,time:now},now);
+    assert.ok(side*(p.stop-protectedStop)>=0);
+    const t=manageQuote(a,p,{mark:p.stop,bid:p.stop,ask:p.stop,time:now},now);assert.equal(t.reason,'KAR_KORUMA');assert.ok(t.net>0);
+  }
+});
+test('Bir risk ilerlemeden sonra stop en iyi fiyatı yarım risk geriden izler',()=>{
+  for(const side of [1,-1]){
+    const {a,p}=setup(side),risk=Math.abs(p.entry-p.initialStop),best=p.entry+side*risk*1.4;
+    manageQuote(a,p,{mark:best,bid:best,ask:best,time:now},now);
+    assert.equal(p.protectionStage,'KAR_KILITLI');near(p.stop,best-side*risk*.5);
+    const old=p.stop,worse=p.entry+side*risk*1.1;
+    manageQuote(a,p,{mark:worse,bid:worse,ask:worse,time:now},now);assert.equal(p.stop,old);
+  }
+});
+test('Kâr koruma aşama olayları bir kez yazılır',()=>{
+  const {a,p}=setup(),risk=p.entry-p.initialStop;
+  for(const r of [.5,.7,1,1.2]){const mark=p.entry+r*risk;manageQuote(a,p,{mark,bid:mark,ask:mark,time:now+r*1000},now+r*1000);}
+  assert.deepEqual(a.events.filter(e=>e.kind==='PROTECTION').map(e=>e.stage),['MASRAF_KORUMA','KAR_KILITLI']);
+});
+test('Güncellemeden önce açılmış pozisyon kâr korumaya güvenle alınır',()=>{
+  const {a,p}=setup(),risk=p.entry-p.initialStop;delete p.bestMark;delete p.protectionStage;delete p.protectedAt;
+  const mark=p.entry+risk*.6;manageQuote(a,p,{mark,bid:mark,ask:mark,time:now},now);
+  assert.equal(p.protectionStage,'MASRAF_KORUMA');assert.equal(p.bestMark,mark);assert.ok(p.stop>p.entry);
+});
+test('Güçlü sinyal hemen açılmaz; geri çekilme ve toparlanmayı bekler',()=>{
+  const pending=createPendingEntry({...sig(),accepted:true},meta,now),atr=pending.signal.atr;
+  assert.equal(observePendingEntry(pending,pending.signal.reference,now).action,'BEKLE');
+  assert.equal(observePendingEntry(pending,pending.trigger,now+1000).action,'BEKLE');assert.equal(pending.touched,true);
+  const ready=observePendingEntry(pending,pending.extreme+atr*.12,now+2000);assert.equal(ready.action,'HAZIR');assert.equal(pending.ready,true);
+});
+test('Derin düşüş ve süresi dolan giriş fırsatı iptal edilir',()=>{
+  const deep=createPendingEntry({...sig(),accepted:true},meta,now);assert.equal(observePendingEntry(deep,deep.invalidation,now+1).action,'IPTAL');
+  const expired=createPendingEntry({...sig(),accepted:true},meta,now);assert.equal(observePendingEntry(expired,100,expired.expiresAt).reason,'Geri çekilme bekleme süresi doldu');
+});
+test('Geri çekilme sonrası yön veya piyasa eğilimi bozulursa teyit verilmez',()=>{
+  const pending=createPendingEntry({...sig(),accepted:true},meta,now),current={...sig(),reasons:[]};
+  assert.deepEqual(pendingConfirmationReasons(pending,current,DEFAULTS),[]);
+  assert.ok(pendingConfirmationReasons(pending,{...current,side:-1},DEFAULTS).includes('Sinyal yönü değişti'));
+  assert.ok(pendingConfirmationReasons(pending,{...current,regime:'YATAY'},DEFAULTS).some(x=>x.includes('eğilimi')));
+});
