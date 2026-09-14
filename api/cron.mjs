@@ -16,6 +16,6 @@ export default async function handler(req,res) {
     return res.status(r.state.lastError?503:200).json({ok:!r.state.lastError,skipped:false,nextCheckAt:nextCheckAt(r.state),message:r.state.lastError||r.state.status});
   }catch(e){
     if(e.code==='KV2_BUSY')return res.status(200).json({ok:true,skipped:true,reason:'ACCOUNT_BUSY',message:'Hesap başka bir işlem tarafından kullanılıyor. Bu tur atlandı; sonraki dakikada yeniden kontrol edilecek.'});
-    return res.status(503).json({error:e.message});
+    return res.status(503).json({error:e.message,...(e.diagnostic?{diagnostic:e.diagnostic}:{})});
   }
 }

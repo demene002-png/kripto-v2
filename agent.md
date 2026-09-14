@@ -108,3 +108,10 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - HTTP acquire bütçesi 8s, diğer Supabase istekleri 5s. POST tekrar yok; lease 55s ve commit CAS aynı. SQL geri dönüş dosyası ayrı.
 - Cron bekleme durumunda önceki hatayı previousError alanında taşır. ACCOUNT_BUSY başarılı tetikleme ama atlanan turdur. Zaman aşımı hâlâ 503; Binance başarısı sayılmaz.
 - Yeni davranış Node sahte ağ yanıtlarıyla sınanır. Canlı PostgreSQL eşzamanlılık testi yapılmadı; kesin çözüm iddia edilmez.
+# 0.1.5 — Supabase HTTP hata ayrıntıları
+
+- Yeniden başlatma kalıcı çözüm olmadı: bir tur açık pozisyon sınırına ulaştı, sonraki turlarda tekrar HTTP 504 var. 004 SQL etkin; bir anlık ölçümde bloklanan acquire isteği yok. Sürekli veri/koruma başarısı iddia edilmez.
+- Önceki genel HTTP hata mesajı sağlayıcı hata kodunu kaybediyordu. Sabit Türkçe açıklamalarla kod/işlem/durum ve güvenli diagnostic metaverisi eklenir.
+- PGRST003 pool beklemesi yalnız sağlayıcı kodu bunu doğrularsa söylenir. Warp timeout günlüğü tek başına pool doluluğu kanıtı değildir (PostgREST #4799).
+- Sırlar/ham SQL veya yanıt metni gösterilmez. Geçerli kod ve sınırlı biçimde sb-request-id alınır. Bu sürüm teşhistir; yeni SQL, timeout artışı veya yazma tekrarı yok.
+- Testler sahte sağlayıcı yanıtları ve cron'dan güvenli kod aktarımını kapsar. Canlı doğrulama bekleniyor; önceki dağıtıma dönüş yeterli.

@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {initialState} from '../core/engine.mjs';
 import {fetchText} from './transport.mjs';
+import {databaseError} from './db-errors.mjs';
 export function config() {
   const url=process.env.SUPABASE_URL?.trim().replace(/\/+$/,''),key=process.env.SUPABASE_PUBLISHABLE_KEY?.trim(),secret=process.env.SUPABASE_SECRET_KEY?.trim();
   if(!url||!key||!secret||url.includes('YENI-'))throw Error('Önce yeni Supabase projesinin ortam değişkenlerini tanımlayın.');
@@ -13,9 +14,9 @@ export function config() {
 }
 async function request(path,{method='GET',body,key,token}={}) {
   const operation=path.startsWith('/auth/')?'oturum doğrulama':path.includes('/rpc/kv2_acquire')?'hesap kilidi alma':path.includes('/rpc/kv2_commit')?'hesap ve işlem geçmişi kaydetme':path.includes('/rpc/kv2_release')?'hesap kilidi bırakma':method==='GET'?'kayıt okuma':'kayıt yazma';
-  const c=config();const {response:r,text}=await fetchText(c.url+path,{method,headers:{apikey:key||c.secret,...(token?{Authorization:`Bearer ${token}`} : c.secret.startsWith('eyJ')?{Authorization:`Bearer ${c.secret}`} : {}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})},{label:`Supabase — ${operation}`,timeoutMs:path==='/rest/v1/rpc/kv2_acquire'?8000:5000,retryRead:true});
-  let data;try{data=text?JSON.parse(text):null;}catch{throw Error(`Supabase — ${operation}: yanıt okunamadı.`);}
-  if(!r.ok){if(data?.message?.includes('KV2_'))throw Error(data.message);throw Error(`Supabase işlemi başarısız (${r.status}).`);}return data;
+  const c=config(),started=Date.now();const {response:r,text}=await fetchText(c.url+path,{method,headers:{apikey:key||c.secret,...(token?{Authorization:`Bearer ${token}`} : c.secret.startsWith('eyJ')?{Authorization:`Bearer ${c.secret}`} : {}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})},{label:`Supabase — ${operation}`,timeoutMs:path==='/rest/v1/rpc/kv2_acquire'?8000:5000,retryRead:true});
+  let data;try{data=text?JSON.parse(text):null;}catch{if(r.ok)throw Error(`Supabase — ${operation}: yanıt okunamadı.`);}
+  if(!r.ok)throw databaseError(r,data,operation,Date.now()-started);return data;
 }
 export const rpc=(name,body)=>request(`/rest/v1/rpc/${name}`,{method:'POST',body});
 export const select=(table,query)=>request(`/rest/v1/${table}?${query}`);

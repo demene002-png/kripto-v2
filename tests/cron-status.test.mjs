@@ -28,3 +28,11 @@ test('Kilit zaman aşımı meşgul hesap gibi gizlenmez ve RPC tekrarlanmaz',asy
   let acquires=0;const {req,res}=setup(t,async url=>{if(url.includes('/kv2_accounts?'))return json([{user_id:'test'}]);if(url.endsWith('/kv2_acquire')){acquires++;throw new DOMException('timeout','TimeoutError');}assert.fail('Kilit alınamadığında işlem yapılmamalı');});
   await cron(req,res);assert.equal(res.code,503);assert.match(res.body.error,/hesap kilidi alma: 8 saniyelik/);assert.equal(acquires,1);
 });
+test('Cron Supabase HTTP kodunu ve aşamasını aktarır; yazmayı tekrarlamaz',async t=>{
+  let calls=0;const {req,res}=setup(t,async url=>{
+    if(url.includes('/kv2_accounts?'))return json([{user_id:'test'}]);
+    if(url.endsWith('/kv2_acquire')){calls++;return new Response(JSON.stringify({code:'PGRST003',message:'raw internal data'}),{status:504});}
+    assert.fail('Hatalı kilit sonrasında işlem yapılmamalı');
+  });
+  await cron(req,res);assert.equal(calls,1);assert.equal(res.code,503);assert.equal(res.body.diagnostic.code,'PGRST003');assert.equal(res.body.diagnostic.operation,'hesap kilidi alma');assert.doesNotMatch(JSON.stringify(res.body),/raw internal data/);
+});
