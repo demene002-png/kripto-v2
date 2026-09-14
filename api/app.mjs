@@ -1,17 +1,17 @@
 import {config,userId,account,withAccount,select,rpc} from '../server/db.mjs';
 import {validateSettings,equity,liquidationPrice,grossPnl} from '../core/engine.mjs';
 import {tick,closeManual} from '../server/runner.mjs';
+import {historyQuery,historyPage} from '../server/history.mjs';
 function publicState(state){return {...state,equity:equity(state),positions:state.positions.map(p=>({...p,liquidation:liquidationPrice(p),net: grossPnl(p,p.mark)-p.entryFee-p.qty*p.mark*p.feeRate+p.funding}))};}
 export default async function handler(req,res) {
   res.setHeader('Cache-Control','no-store');
   try {
-    if(req.method==='GET'&&req.query?.config==='1'){const c=config();return res.status(200).json({url:c.url,key:c.key,version:'0.1.7'});}
+    if(req.method==='GET'&&req.query?.config==='1'){const c=config();return res.status(200).json({url:c.url,key:c.key,version:'0.1.8'});}
     const uid=await userId(req);
     if(req.method==='GET') {
       const cursor=req.query?.before;
       if(req.query?.history==='1') {
-        if(cursor&&!/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(cursor))throw Error('Geçersiz geçmiş sayfası.');
-        const rows=await select('kv2_events',`user_id=eq.${uid}&kind=eq.CLOSE&order=created_at.desc&limit=50${cursor?`&created_at=lt.${encodeURIComponent(cursor)}`:''}`);return res.status(200).json({rows});
+        const rows=await select('kv2_events',historyQuery(uid,cursor));return res.status(200).json(historyPage(rows));
       }
       let a=await account(uid);if(!a)a=await withAccount(uid,()=>{});
       const research=await select('kv2_research',`user_id=eq.${uid}&select=id,created_at,result&order=created_at.desc&limit=3`);

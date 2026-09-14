@@ -125,3 +125,13 @@ npm run dev
 - Vercel cron sınırları: https://vercel.com/docs/cron-jobs/usage-and-pricing
 
 İlk paketin gerçek durumu ve sonraki zorunlu işler `agent.md` içindedir.
+
+## 0.1.8 güncellemesi — İşlem geçmişi
+
+ZIP içeriğini mevcut kripto-v2 deposunun köküne yükleyip Vercel dağıtımını tamamlayın. Yeni SQL veya ortam değişkeni gerekmiyor. Sayfayı Ctrl+Shift+R ile yenileyin; alt bilgi 0.1.8 olmalı.
+
+İşlem geçmişi ilk açılışta 50 kapanışı yükler. Kayıt varsa “Daha eski işlemler” sonraki sayfayı getirir. Kayıtlar bittiyse düğme “Tüm kayıtlar yüklendi” olur; bölümde gösterilen kapanış sayısı yazılır. Hata olduğunda aynı bölümde açıklama ve “Tekrar dene” görünür. Açık işlemler bu tabloda yer almaz.
+
+Kontrol: Geçmiş yüklenmesini bekleyin, varsa sonraki sayfayı açın, panelin otomatik yenilenmesinden sonra eski satırların kaldığını doğrulayın. Yalnız bir kapanış kaydedilmişse bir satır görülmesi normaldir. Bu güncelleme kaydedilmemiş veya silinmiş işlemleri geri oluşturmaz.
+
+Geri dönüş: Önceki Vercel dağıtımını yeniden yayımlayın. Veritabanına müdahale gerekmez. Bu sürüm işlem geçmişi içindir; canlı 504 sorununun çözüldüğünü veya stratejinin kârlılığını kanıtlamaz.

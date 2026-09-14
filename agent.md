@@ -128,3 +128,13 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - SUPABASE_HTTP_TRANSPORT=native|fetch karşılaştırma/geri dönüş anahtarı; boş değer native. Yanlış değer sessizce kabul edilmez. Yazma isteği otomatik tekrarlanmaz veya diğer istemciyle yeniden gönderilmez.
 - Mevcut timeout bütçeleri, lease, CAS, kullanıcı ayarları ve fiyat formatı korunur. SQL gerekmez. Sağlık kontrolü sadece seçili yöntemi bildirir, gerçek bağlantı sağlık testi değildir.
 - 69 test + kaynak derlemesi başarılı. Yerel soket testleri ve ayrıca geçici CA ile gerçek TLS kabul/red denemesi yapıldı. Canlı 504 çözümü doğrulanmadı; yeniden bağlantı maliyeti izlenmeli. Eski dağıtım veya fetch seçimiyle geri dönülür.
+
+# 0.1.8 — İşlem geçmişi sayfalama
+
+- Kullanıcı düğmenin görünmediği ifadesini düzeltti: “Daha eski işlemler” düğmesi çalışmıyor. Canlı hesabın kaç kapanışı olduğu henüz doğrulanmadı.
+- Kodda ilk istek ekrandaki kayıtları yeniden getiriyordu. Sonraki istekte Supabase'in +00:00 ofsetli zaman damgası yalnız Z kabul eden doğrulamadan geçmiyordu. Sadece zamana göre sayfalama aynı transaction içindeki kapanışları sınırda atlayabilirdi.
+- Geçmiş ilk hesap yüklemesinden sonra bir kez, ayrı salt okunur istekle alınır. 50 kayıt + bir sonraki kaydın varlık kontrolü; created_at ve event_id ile kararlı birleşik imleç. Mikrosaniyeler korunur, filtre girdisi doğrulanır, kullanıcı filtresi sunucuda doğrulanmış kimlikten gelir.
+- Sayfa yenilemeleri yüklenmiş geçmişi silmez; kimliğe göre tekilleştirilir. Çift tıklama tek istek gönderir; hatada imleç korunur. Sayı, yükleniyor, tekrar dene ve tüm kayıtlar yüklendi durumları geçmiş bölümünde gösterilir.
+- Kayıt icat edilmez: defterde yalnız tek kapanış varsa tek kayıt olduğu belirtilir. Açık pozisyonlar kapanmış geçmiş sayılmaz. Finansal kurallar, bakiye, açık pozisyonlar, 504 bağlantı katmanı değiştirilmedi.
+- 8 yeni regresyon testiyle 77 test ve derleme geçti. Yerel API testi sahte Supabase yanıtları kullanır; gerçek Supabase sayfalama ve canlı tarayıcı doğrulaması bekleniyor.
+- Yeni SQL gerekmez. Önceki Vercel dağıtımına dönmek yeterlidir. Hesap veya olay tablolarını silmeyin.
