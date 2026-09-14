@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import cron from '../api/cron.mjs';
 import {initialState} from '../core/engine.mjs';
 function setup(t,fetcher){
-  const values={SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_test',SUPABASE_SECRET_KEY:'sb_secret_test',CRON_SECRET:'x'.repeat(64)};
+  const values={SUPABASE_HTTP_TRANSPORT:'fetch',SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_test',SUPABASE_SECRET_KEY:'sb_secret_test',CRON_SECRET:'x'.repeat(64)};
   const old=Object.fromEntries(Object.keys(values).map(k=>[k,process.env[k]]));Object.assign(process.env,values);
   t.after(()=>{for(const [k,v] of Object.entries(old)){if(v===undefined)delete process.env[k];else process.env[k]=v;}});
   t.mock.method(globalThis,'fetch',fetcher);

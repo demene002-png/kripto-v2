@@ -27,7 +27,7 @@ test('Binance 451 erişim reddi korunur',async()=>{
   await assert.rejects(publicGet('/fapi/v1/klines',{},async()=>new Response('restricted',{status:451})),/Binance verisi alınamadı \(451\)/);
 });
 test('Supabase bağlantısı okuma tekrarını ve yazma aşaması mesajını uygular',async t=>{
-  const values={SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_test',SUPABASE_SECRET_KEY:'sb_secret_test'};
+  const values={SUPABASE_HTTP_TRANSPORT:'fetch',SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_test',SUPABASE_SECRET_KEY:'sb_secret_test'};
   const old=Object.fromEntries(Object.keys(values).map(k=>[k,process.env[k]]));Object.assign(process.env,values);
   t.after(()=>{for(const [k,v] of Object.entries(old)){if(v===undefined)delete process.env[k];else process.env[k]=v;}});
   let reads=0,writes=0;

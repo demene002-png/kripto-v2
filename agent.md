@@ -121,3 +121,10 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - Yalnız açık işlemlerin entry/mark/stop/target/liquidation gösterimi ortak Türkçe formatPrice ile en fazla 12 anlamlı basamağa taşındı; gereksiz son sıfırlar eklenmez. Eksik/geçersiz fiyat çizgi olarak gösterilir.
 - Hesaplama, state, veri kaynağı, işlem kuralları ve para/komisyon biçimleri değiştirilmedi. Fiyat adımı doğrulaması veya Supabase 504 çözümü olduğu iddia edilmez.
 - Yerel temsilî fiyat kontrolü ve sözdizimi derlemesi yeterli; yeni kalıcı test eklenmedi. Canlı tarayıcı doğrulaması yapılmadı. Önceki dağıtıma dönüş yeterli, SQL yok.
+# 0.1.7 — Kontrollü HTTP istemcisi değişimi
+
+- Kullanıcı ölçümü: kv2_acquire 597 kayıtlı çağrı / 2,86 ms ortalama / 79,60 ms maksimum. Bu SQL yürütme istatistiği başarısız tüm API çağrılarını kapsamaz; tek başına kök neden kanıtı değildir.
+- Varsayılan Supabase sunucu istemcisi Node HTTPS, agent:false ve Connection:close; UTF-8 Buffer uzunluğuyla Content-Length. TLS doğrulaması açık, yönlendirme takip edilmez, 16 MiB yanıt sınırı. Binance istemcisi değişmez.
+- SUPABASE_HTTP_TRANSPORT=native|fetch karşılaştırma/geri dönüş anahtarı; boş değer native. Yanlış değer sessizce kabul edilmez. Yazma isteği otomatik tekrarlanmaz veya diğer istemciyle yeniden gönderilmez.
+- Mevcut timeout bütçeleri, lease, CAS, kullanıcı ayarları ve fiyat formatı korunur. SQL gerekmez. Sağlık kontrolü sadece seçili yöntemi bildirir, gerçek bağlantı sağlık testi değildir.
+- 69 test + kaynak derlemesi başarılı. Yerel soket testleri ve ayrıca geçici CA ile gerçek TLS kabul/red denemesi yapıldı. Canlı 504 çözümü doğrulanmadı; yeniden bağlantı maliyeti izlenmeli. Eski dağıtım veya fetch seçimiyle geri dönülür.
