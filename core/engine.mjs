@@ -13,6 +13,16 @@ export const round = x => Math.round((x + Number.EPSILON) * 1e8) / 1e8;
 export const mean = a => a.reduce((x,y)=>x+y,0)/Math.max(1,a.length);
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 export function initialState(now=Date.now()) {return {version:VERSION,balance:1000,peak:1000,day:dayKey(now),dayStartEquity:1000,settingsVersion:0,settings:{...DEFAULTS},positions:[],pendingEntries:[],trades:[],events:[],signals:[],curve:[],scanCursor:0,lastRun:null,lastError:null,circuit:null};}
+export function resetTestAccount(a,now=Date.now()) {
+  if(a.positions.length)throw Error('Önce tüm açık pozisyonları kapatın. Açık işlem varken test bakiyesi yenilenemez.');
+  const keptTrades=[...(a.trades||[])];
+  a.balance=1000;a.peak=1000;a.day=dayKey(now);a.dayStartEquity=1000;
+  a.pendingEntries=[];a.signals=[];a.curve=[{t:now,equity:1000}];a.scanCursor=0;
+  a.lastRun=null;a.lastProtectionAt=null;a.nextScanAt=null;a.lastError=null;a.status='Yeni 1.000 USDT test dönemi başladı';a.circuit=null;
+  a.trades=keptTrades;
+  a.events.push({id:`reset:${now}`,kind:'RESET',at:now,amount:1000,previousTradeCount:keptTrades.length});
+  return a;
+}
 export function dayKey(t) {return new Date(t+3*3600000).toISOString().slice(0,10);}
 export function eligible(s) {return s?.status==='TRADING'&&s.contractType==='PERPETUAL'&&s.quoteAsset==='USDT'&&s.marginAsset==='USDT'&&!STABLE.has(s.baseAsset)&&!/(UP|DOWN|BULL|BEAR)$/.test(s.baseAsset);}
 export function validateSettings(old,patch) {

@@ -1,12 +1,12 @@
 import {config,userId,account,withAccount,select,rpc} from '../server/db.mjs';
-import {validateSettings,equity,liquidationPrice,grossPnl} from '../core/engine.mjs';
+import {validateSettings,equity,liquidationPrice,grossPnl,resetTestAccount} from '../core/engine.mjs';
 import {tick,closeManual} from '../server/runner.mjs';
 import {historyQuery,historyPage} from '../server/history.mjs';
 function publicState(state){return {...state,equity:equity(state),positions:state.positions.map(p=>({...p,liquidation:liquidationPrice(p),net: grossPnl(p,p.mark)-p.entryFee-p.qty*p.mark*p.feeRate+p.funding}))};}
 export default async function handler(req,res) {
   res.setHeader('Cache-Control','no-store');
   try {
-    if(req.method==='GET'&&req.query?.config==='1'){const c=config();return res.status(200).json({url:c.url,key:c.key,version:'0.3.1'});}
+    if(req.method==='GET'&&req.query?.config==='1'){const c=config();return res.status(200).json({url:c.url,key:c.key,version:'0.3.2'});}
     const uid=await userId(req);
     if(req.method==='GET') {
       const cursor=req.query?.before;
@@ -26,6 +26,7 @@ export default async function handler(req,res) {
       }
       if(b.action==='scan')return tick(a);
       if(b.action==='close'){if(typeof b.id!=='string')throw Error('Pozisyon seçin.');return closeManual(a,b.id);}
+      if(b.action==='reset-test'){return resetTestAccount(a);}
       if(b.action==='pause'){a.settings.paused=true;a.settingsVersion=(a.settingsVersion||0)+1;return;}
       throw Error('Geçersiz işlem.');
     });

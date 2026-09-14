@@ -180,3 +180,11 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - Long/short testlerinde simüle edilen kapanış neti en az 0,20R × miktar olarak doğrulandı; fark spread/kayma tamponudur. Fiyat boşluğu veya dakikalık kontrol arası hareket bunu garanti etmez.
 - Önceden kapanmış HYPE/ADA işlemleri değiştirilmez. Eski sürümde zaten yükseltilmiş bir stop risk artırmak için geriye gevşetilmez. Yeni kural yeni pozisyonlarda ve henüz korunmaya geçmemiş açık pozisyonlarda uygulanır.
 - SQL ve ortam değişkeni gerekmez. Geri dönüş Vercel 0.3.0 dağıtımıdır. Finansal kayıtlar silinmez.
+
+# 0.3.2 — Geçmişi koruyan yeni test dönemi
+
+- Kullanıcı mevcut sanal pozisyonları kapattıktan sonra geçmiş test verilerini silmeden bakiyeyi yeniden 1.000 USDT yapmak istedi.
+- Ayarlar bölümüne “1.000 USDT ile yeniden başlat” işlemi eklendi. Açık pozisyon varsa işlem reddedilir; böylece teminat ve kapanış kaydı atlanamaz.
+- Başarılı sıfırlama bakiye, sermaye zirvesi, günlük başlangıç, risk devre kesicisi ve yeni dönem grafiğini 1.000 USDT'ye alır. Bekleyen girişler ve eski sinyal listesi temizlenir.
+- Kapanan işlemler, değiştirilemez olay kayıtları, strateji araştırmaları ve kullanıcı ayarları korunur. Ayrı bir RESET olayı kaydedilir.
+- SQL ve ortam değişkeni gerekmez. Önceden kapanmış işlemlerin finansal sonuçları yeniden yazılmaz.

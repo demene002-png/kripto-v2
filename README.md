@@ -1,4 +1,6 @@
-# Kripto V2 — 0.1.2 sanal deneme paketi
+# Kripto V2 — 0.3.2 sanal deneme paketi
+
+Sürüm 0.3.2, açık pozisyonlar kapatıldıktan sonra işlem ve araştırma geçmişini koruyarak sanal bakiyeyi güvenli biçimde 1.000 USDT'den yeniden başlatabilir.
 
 **Otomatik kontrol güncellemesi: `GUNCELLEME-0.1.2.md`.** Sayfa açıkken otomatik tarama; sayfa kapalıyken `supabase/003_otomatik_kontrol.sql` ile kurulan zamanlayıcı. 451 erişim reddi bu güncellemeyle giderilmez. İlk kurulum SQL'ini tekrar çalıştırmayın.
 
