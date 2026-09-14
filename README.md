@@ -135,3 +135,16 @@ ZIP içeriğini mevcut kripto-v2 deposunun köküne yükleyip Vercel dağıtım�
 Kontrol: Geçmiş yüklenmesini bekleyin, varsa sonraki sayfayı açın, panelin otomatik yenilenmesinden sonra eski satırların kaldığını doğrulayın. Yalnız bir kapanış kaydedilmişse bir satır görülmesi normaldir. Bu güncelleme kaydedilmemiş veya silinmiş işlemleri geri oluşturmaz.
 
 Geri dönüş: Önceki Vercel dağıtımını yeniden yayımlayın. Veritabanına müdahale gerekmez. Bu sürüm işlem geçmişi içindir; canlı 504 sorununun çözüldüğünü veya stratejinin kârlılığını kanıtlamaz.
+
+## 0.1.9 güncellemesi — Supabase 504 dayanıklılığı
+
+Kurulum sırası:
+
+1. Supabase SQL Editor'de yalnız `202609140005_idempotent_acquire.sql` dosyasını çalıştırın.
+2. Ardından 0.1.9 ZIP içeriğini GitHub deposunun köküne yükleyip Vercel dağıtımını tamamlayın.
+3. `/api/health` yanıtında 0.1.9 ve `native` görünmesini kontrol edin.
+4. Sonraki 10 dakikanın `net._http_response` sonuçlarını izleyin.
+
+Kilit alma 503/504 veya bağlantı hatası verirse aynı güvenli anahtarla yalnız bir ek deneme yapılır. Bakiye/işlem geçmişi kaydeden commit çağrısı tekrar gönderilmez. İki deneme de başarısızsa cron 503 döndürmeye devam eder; hata gizlenmez.
+
+Geri dönüşte önce Vercel'i 0.1.8'e alın. Gerekirse ardından `supabase/005_geri_al.sql` çalıştırın. Hesap tablolarını silmeyin.

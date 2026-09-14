@@ -24,15 +24,30 @@ test('Meşgul hesap turu kayıt ve piyasa isteği yapmadan atlanır',async t=>{
   let calls=0;const {req,res}=setup(t,async url=>{calls++;if(url.includes('/kv2_accounts?'))return json([{user_id:'test'}]);if(url.endsWith('/kv2_acquire'))return json(null);assert.fail('Meşgul hesaba yazılmamalı');});
   await cron(req,res);assert.equal(res.code,200);assert.equal(res.body.reason,'ACCOUNT_BUSY');assert.equal(res.body.skipped,true);assert.equal(calls,2);
 });
-test('Kilit zaman aşımı meşgul hesap gibi gizlenmez ve RPC tekrarlanmaz',async t=>{
+test('Kilit zaman aşımı yalnız bir kez yeniden denenir ve meşgul gibi gizlenmez',async t=>{
   let acquires=0;const {req,res}=setup(t,async url=>{if(url.includes('/kv2_accounts?'))return json([{user_id:'test'}]);if(url.endsWith('/kv2_acquire')){acquires++;throw new DOMException('timeout','TimeoutError');}assert.fail('Kilit alınamadığında işlem yapılmamalı');});
-  await cron(req,res);assert.equal(res.code,503);assert.match(res.body.error,/hesap kilidi alma: 8 saniyelik/);assert.equal(acquires,1);
+  await cron(req,res);assert.equal(res.code,503);assert.match(res.body.error,/hesap kilidi alma: 8 saniyelik/);assert.equal(acquires,2);assert.equal(res.body.diagnostic.retried,true);
 });
-test('Cron Supabase HTTP kodunu ve aşamasını aktarır; yazmayı tekrarlamaz',async t=>{
+test('Cron kilit 504 yanıtını bir kez yeniden dener; diğer yazmaları başlatmaz',async t=>{
   let calls=0;const {req,res}=setup(t,async url=>{
     if(url.includes('/kv2_accounts?'))return json([{user_id:'test'}]);
     if(url.endsWith('/kv2_acquire')){calls++;return new Response(JSON.stringify({code:'PGRST003',message:'raw internal data'}),{status:504});}
     assert.fail('Hatalı kilit sonrasında işlem yapılmamalı');
   });
-  await cron(req,res);assert.equal(calls,1);assert.equal(res.code,503);assert.equal(res.body.diagnostic.code,'PGRST003');assert.equal(res.body.diagnostic.operation,'hesap kilidi alma');assert.doesNotMatch(JSON.stringify(res.body),/raw internal data/);
+  await cron(req,res);assert.equal(calls,2);assert.equal(res.code,503);assert.equal(res.body.diagnostic.code,'PGRST003');assert.equal(res.body.diagnostic.operation,'hesap kilidi alma');assert.equal(res.body.diagnostic.retried,true);assert.doesNotMatch(JSON.stringify(res.body),/raw internal data/);
+});
+test('İlk kilit 504 olursa aynı token ile ikinci istekten devam eder',async t=>{
+  const a=initialState();a.lastRun=Date.now();a.nextScanAt=Date.now()+600000;
+  let acquires=0,token;
+  const {req,res}=setup(t,async(url,options)=>{
+    if(url.includes('/kv2_accounts?'))return json([{user_id:'test'}]);
+    if(url.endsWith('/kv2_acquire')){
+      acquires++;const body=JSON.parse(options.body);token??=body.p_token;assert.equal(body.p_token,token);
+      if(acquires===1)return new Response('{}',{status:504});
+      return json({state:a,revision:1});
+    }
+    if(url.endsWith('/kv2_commit'))return json(2);
+    assert.fail('Beklenmeyen istek');
+  });
+  await cron(req,res);assert.equal(res.code,200);assert.equal(acquires,2);assert.equal(res.body.reason,'WAITING');
 });

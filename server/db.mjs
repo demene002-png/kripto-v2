@@ -28,13 +28,24 @@ async function request(path,{method='GET',body,key,token}={}) {
 }
 export const rpc=(name,body)=>request(`/rest/v1/rpc/${name}`,{method:'POST',body});
 export const select=(table,query)=>request(`/rest/v1/${table}?${query}`);
+const transientAcquire=e=>e?.code==='UPSTREAM_TIMEOUT'||e?.code==='UPSTREAM_CONNECTION'||[503,504].includes(e?.diagnostic?.httpStatus)||['PGRST000','PGRST001','PGRST002','PGRST003'].includes(e?.diagnostic?.code);
+export async function acquire(uid,token) {
+  const body={p_user:uid,p_token:token,p_initial:initialState()};
+  try{return await rpc('kv2_acquire',body);}
+  catch(first){
+    if(!transientAcquire(first))throw first;
+    await new Promise(resolve=>setTimeout(resolve,200));
+    try{return await rpc('kv2_acquire',body);}
+    catch(second){second.diagnostic={...second.diagnostic,retried:true,firstStatus:first.diagnostic?.httpStatus||null,firstCode:first.diagnostic?.code||first.code||null};throw second;}
+  }
+}
 export async function userId(req) {
   const token=req.headers.authorization?.replace(/^Bearer /,'');if(!token||token.length>10000)throw Error('Oturum açmanız gerekli.');
   const c=config(),u=await request('/auth/v1/user',{key:c.key,token});if(!u?.id)throw Error('Oturum doğrulanamadı.');return u.id;
 }
 export async function account(uid) {const rows=await select('kv2_accounts',`user_id=eq.${uid}&select=state,revision`);return rows[0]||null;}
 export async function withAccount(uid,work) {
-  const token=randomUUID();const lock=await rpc('kv2_acquire',{p_user:uid,p_token:token,p_initial:initialState()});
+  const token=randomUUID();const lock=await acquire(uid,token);
   if(!lock){const e=Error('Hesap üzerinde işlem sürüyor. Birkaç saniye sonra tekrar deneyin.');e.code='KV2_BUSY';throw e;}
   const state=lock.state;state.events=[];
   try {

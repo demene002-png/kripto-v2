@@ -138,3 +138,13 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - Kayıt icat edilmez: defterde yalnız tek kapanış varsa tek kayıt olduğu belirtilir. Açık pozisyonlar kapanmış geçmiş sayılmaz. Finansal kurallar, bakiye, açık pozisyonlar, 504 bağlantı katmanı değiştirilmedi.
 - 8 yeni regresyon testiyle 77 test ve derleme geçti. Yerel API testi sahte Supabase yanıtları kullanır; gerçek Supabase sayfalama ve canlı tarayıcı doğrulaması bekleniyor.
 - Yeni SQL gerekmez. Önceki Vercel dağıtımına dönmek yeterlidir. Hesap veya olay tablolarını silmeyin.
+
+# 0.1.9 — 504 için güvenli kilit yeniden denemesi
+
+- Canlı kanıt: kv2_acquire native istemciyle aralıklı HTTP 504; üç örnek 5146–5746 ms, sağlayıcı kodu boş, sb-request-id mevcut. Aynı aralıkta başarılı turlar var. Önceki pg_stat_statements ölçümü ortalama 2,86 ms / en yavaş 79,60 ms olduğundan SQL yürütme süresi kök neden diye kabul edilmedi.
+- Supabase güncel Data API yönergesi 503/504 ve ağ hatalarını geçici hata olarak yeniden deneyebilir; aşırı denemenin havuzu tüketebileceğini belirtir. Uygulama yalnız kv2_acquire için en fazla bir kez, 200 ms sonra yeniden dener. Commit, event, araştırma ve diğer yazımlar tekrar edilmez.
+- 005 migration aynı p_token ve aktif lease ile çağrıyı idempotent yapar. İlk yanıt kaybolduysa aynı token mevcut state/revision değerini alır; başka token hâlâ meşgul sonucu alır. Lease uzatılmaz, güvenlik ve CAS korunur.
+- Kurulum sırası zorunlu: önce 005 SQL, sonra 0.1.9 Vercel kodu. Böylece ikinci çağrı ilk başarılı çağrıyı başka işlem sanmaz. Veri, bakiye, ayar, açık pozisyon ve geçmiş değiştirilmez.
+- Hata iki denemede de sürerse ayrıntı retried=true ile görünür; başarısız tur başarı gibi gösterilmez. Bu, geçici 504'e dayanıklılık sağlar; Supabase platformundaki temel 504 nedeninin ortadan kalktığı iddia edilmez.
+- Geri dönüş: önce Vercel 0.1.8'e alınır; gerekirse 005_geri_al.sql uygulanır. Tablo veya olaylar silinmez.
+- 78 yerel test ve derleme geçti. İlk 504 + aynı token ikinci başarı, iki 504'te durma, mutasyon tekrar etmeme ve mevcut finans testleri doğrulandı. Canlı Supabase sonucu dağıtımdan sonra ölçülmeli.
