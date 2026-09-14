@@ -168,3 +168,9 @@ Güçlü sinyal artık hemen işleme dönüşmez. Yükseliş yönünde fiyatın 
 Toparlanma sonrasında strateji, piyasa yönü, hacim, Bitcoin koşulu, korelasyon, spread ve risk kontrolleri yeniden çalışır. Fiyat geri çekilmezse işlem açılmaz. Bekleyen fırsatlar karar tablosunda Türkçe gösterilir.
 
 Yeni SQL veya ortam değişkeni gerekmez. ZIP içeriğini depoya yükleyip Vercel dağıtımından sonra `/api/health` sürümünün 0.3.0 olduğunu kontrol edin. Geri dönüş için 0.2.0 dağıtımını yeniden yayımlayın.
+
+## 0.3.1 güncellemesi — Komisyona çalışan kapanışı azaltma
+
+İlk kâr koruması artık 0,75R lehte hareketten sonra etkinleşir ve tahmini masraflara ek 0,25R kâr payı bırakır. 1R sonrasında stop, en iyi fiyatı 0,5R geriden izler. Amaç çok küçük brüt kârın büyük bölümünün komisyona gitmesiyle oluşan 0,07–0,08 USDT net kapanışları azaltmaktır.
+
+Yeni SQL veya ortam değişkeni gerekmez. 0.3.1 ZIP'i dağıtıldıktan sonra `/api/health` sürümünü kontrol edin. Geri dönüş için Vercel 0.3.0 dağıtımını yeniden yayımlayın.

@@ -6,7 +6,7 @@ export const DEFAULTS = Object.freeze({auto:false, paused:false, leverage:5, ris
   minScore:80, minVotes:3, atrMult:2, rewardRisk:2, feeRate:0.0005, slippageBps:5,
   maintenanceRate:0.01, maxSpreadBps:8, minVolume:20000000, cooldownMinutes:60});
 export const STRATEGIES = ['trend','momentum','breakout','pullback'];
-export const PROFIT_PROTECTION = Object.freeze({costTriggerR:0.5,trailTriggerR:1,trailDistanceR:0.5,minLockR:0.05});
+export const PROFIT_PROTECTION = Object.freeze({costTriggerR:0.75,trailTriggerR:1,trailDistanceR:0.5,minLockR:0.25});
 export const PULLBACK_ENTRY = Object.freeze({offsetATR:0.3,invalidationATR:1.2,reboundATR:0.12,expiresMs:45*60000,maxPending:3});
 export const STABLE = new Set(['USDT','USDC','FDUSD','TUSD','USDP','DAI','BUSD','USD1','U','USDE','USDS','PYUSD','GUSD','USDD','FRAX','LUSD','USD0','USTC','RLUSD','AEUR','EURI','XUSD','AUSD','BFUSD','USDX','EUR','TRY','BRL','GBP','AUD','USDD1','USDF']);
 export const round = x => Math.round((x + Number.EPSILON) * 1e8) / 1e8;

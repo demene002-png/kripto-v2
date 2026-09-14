@@ -26,16 +26,16 @@ test('Binance emir yolları ağ çağrısı yapılmadan reddedilir',async()=>{le
 test('HTTP hata JSONu geçerli piyasa gibi kullanılmaz',async()=>{await assert.rejects(publicGet('/fapi/v1/klines',{},async()=>({ok:false,status:451})));});
 test('İşlemden hemen sonra özsermaye giriş+çıkış maliyetlerini içerir',()=>{const {a,p}=setup();near(equity(a),1000-p.entryFee+p.side*p.qty*(p.mark-p.entry)-p.qty*p.mark*p.feeRate);});
 test('Aynı coin ikinci pozisyon ve cooldown denetlenir',()=>{const {a,p}=setup();assert.equal(positionPlan(a,sig(),{mark:100,bid:100,ask:100,time:now},meta,now).accepted,false);closePosition(a,p.id,100,'MANUEL',now+10);assert.ok(positionPlan(a,sig(),{mark:100,bid:100,ask:100,time:now+20},meta,now+20).reasons.some(x=>x.includes('bekleme')));});
-test('Yarım risk ilerlemede masrafları aşan stop etkinleşir ve geri gitmez',()=>{
+test('0,75 risk ilerlemede masraflardan sonra anlamlı kâr kilitlenir ve stop geri gitmez',()=>{
   for(const side of [1,-1]){
     const {a,p}=setup(side),risk=Math.abs(p.entry-p.initialStop),first=p.stop;
-    assert.equal(manageQuote(a,p,{mark:p.entry+side*risk*.49,bid:p.entry+side*risk*.49,ask:p.entry+side*risk*.49,time:now},now),null);assert.equal(p.stop,first);
-    const favorable=p.entry+side*risk*.5;
+    assert.equal(manageQuote(a,p,{mark:p.entry+side*risk*.74,bid:p.entry+side*risk*.74,ask:p.entry+side*risk*.74,time:now},now),null);assert.equal(p.stop,first);
+    const favorable=p.entry+side*risk*.75;
     assert.equal(manageQuote(a,p,{mark:favorable,bid:favorable,ask:favorable,time:now},now),null);assert.equal(p.protectionStage,'MASRAF_KORUMA');assert.ok(side*(p.stop-p.entry)>0);
     const protectedStop=p.stop;
-    manageQuote(a,p,{mark:p.entry+side*risk*.7,bid:p.entry+side*risk*.7,ask:p.entry+side*risk*.7,time:now},now);
+    manageQuote(a,p,{mark:p.entry+side*risk*.9,bid:p.entry+side*risk*.9,ask:p.entry+side*risk*.9,time:now},now);
     assert.ok(side*(p.stop-protectedStop)>=0);
-    const t=manageQuote(a,p,{mark:p.stop,bid:p.stop,ask:p.stop,time:now},now);assert.equal(t.reason,'KAR_KORUMA');assert.ok(t.net>0);
+    const t=manageQuote(a,p,{mark:p.stop,bid:p.stop,ask:p.stop,time:now},now);assert.equal(t.reason,'KAR_KORUMA');assert.ok(t.net>=p.qty*risk*.2);
   }
 });
 test('Bir risk ilerlemeden sonra stop en iyi fiyatı yarım risk geriden izler',()=>{
@@ -49,12 +49,12 @@ test('Bir risk ilerlemeden sonra stop en iyi fiyatı yarım risk geriden izler',
 });
 test('Kâr koruma aşama olayları bir kez yazılır',()=>{
   const {a,p}=setup(),risk=p.entry-p.initialStop;
-  for(const r of [.5,.7,1,1.2]){const mark=p.entry+r*risk;manageQuote(a,p,{mark,bid:mark,ask:mark,time:now+r*1000},now+r*1000);}
+  for(const r of [.75,.9,1,1.2]){const mark=p.entry+r*risk;manageQuote(a,p,{mark,bid:mark,ask:mark,time:now+r*1000},now+r*1000);}
   assert.deepEqual(a.events.filter(e=>e.kind==='PROTECTION').map(e=>e.stage),['MASRAF_KORUMA','KAR_KILITLI']);
 });
 test('Güncellemeden önce açılmış pozisyon kâr korumaya güvenle alınır',()=>{
   const {a,p}=setup(),risk=p.entry-p.initialStop;delete p.bestMark;delete p.protectionStage;delete p.protectedAt;
-  const mark=p.entry+risk*.6;manageQuote(a,p,{mark,bid:mark,ask:mark,time:now},now);
+  const mark=p.entry+risk*.8;manageQuote(a,p,{mark,bid:mark,ask:mark,time:now},now);
   assert.equal(p.protectionStage,'MASRAF_KORUMA');assert.equal(p.bestMark,mark);assert.ok(p.stop>p.entry);
 });
 test('Güçlü sinyal hemen açılmaz; geri çekilme ve toparlanmayı bekler',()=>{

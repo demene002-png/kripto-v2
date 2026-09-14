@@ -171,3 +171,12 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - Geçmiş test de sinyali doğrudan açmaz. Mum içinde geri çekilme ve kapanıştaki toparlanma gözlenirse giriş en erken sonraki mum açılışında yapılır; geleceği görme kullanılmaz.
 - 87 yerel test hedeflenmiştir: saf bekleme/temas/toparlanma/iptal, yön bozulması, canlı runner'da anında açmama ve daha düşük fiyatlı giriş, geçmiş giriş zamanlaması, finans ve 504 regresyonları. Canlı kârlılık kanıtı değildir.
 - SQL veya ortam değişkeni gerekmez. Vercel 0.2.0 dağıtımına dönmek geri alma için yeterlidir; bekleyen fırsat alanı eski kod tarafından yok sayılır.
+
+# 0.3.1 — Komisyon sonrası anlamlı kâr kilidi
+
+- Canlı geçmiş kanıtı: HYPEUSDT +0,50 brüt, 0,3959 komisyon, yaklaşık -0,02 fonlama ve +0,08 net; ADAUSDT +0,32 brüt, 0,2269 komisyon, yaklaşık -0,02 fonlama ve +0,07 net. Muhasebe toplamları tutarlıydı; sorun ilk kâr koruma stopunun yalnız 0,05R kâr payı bırakmasıydı.
+- İlk koruma 0,5R yerine 0,75R lehte harekette etkinleşir. Tahmini iki yön komisyonu ve iki yön kaymaya ek olarak 0,25R kâr payı kilitlenir. 1R sonrasında en iyi fiyatın 0,5R gerisindeki hareketli stop devam eder.
+- Daha yüksek aktivasyon, koruma stopunun güncel fiyatın ters tarafında kalması için alan sağlar ve normal dalgalanmada masrafa çalışan erken kapanışı azaltır. Fiyat 0,75R'ye ulaşmadan dönerse ilk zarar stopu geçerlidir.
+- Long/short testlerinde simüle edilen kapanış neti en az 0,20R × miktar olarak doğrulandı; fark spread/kayma tamponudur. Fiyat boşluğu veya dakikalık kontrol arası hareket bunu garanti etmez.
+- Önceden kapanmış HYPE/ADA işlemleri değiştirilmez. Eski sürümde zaten yükseltilmiş bir stop risk artırmak için geriye gevşetilmez. Yeni kural yeni pozisyonlarda ve henüz korunmaya geçmemiş açık pozisyonlarda uygulanır.
+- SQL ve ortam değişkeni gerekmez. Geri dönüş Vercel 0.3.0 dağıtımıdır. Finansal kayıtlar silinmez.
