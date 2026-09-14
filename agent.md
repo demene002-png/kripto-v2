@@ -188,3 +188,10 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - Başarılı sıfırlama bakiye, sermaye zirvesi, günlük başlangıç, risk devre kesicisi ve yeni dönem grafiğini 1.000 USDT'ye alır. Bekleyen girişler ve eski sinyal listesi temizlenir.
 - Kapanan işlemler, değiştirilemez olay kayıtları, strateji araştırmaları ve kullanıcı ayarları korunur. Ayrı bir RESET olayı kaydedilir.
 - SQL ve ortam değişkeni gerekmez. Önceden kapanmış işlemlerin finansal sonuçları yeniden yazılmaz.
+
+# 0.3.3 — Tarama geçmişini koruma
+
+- Kullanıcı yeni test döneminden sonra tarama/karar günlüğünün kaybolmamasını istedi.
+- Sıfırlama artık `signals` listesini değiştirmez. İşlem geçmişi, tarama geçmişi, araştırmalar ve ayarlar korunur.
+- Bekleyen giriş fırsatları yeni 1.000 USDT dönemine taşınmaz; bunlar geçmiş veri değil, gelecekte pozisyon açabilecek aktif emir benzeri niyetlerdir.
+- SQL ve ortam değişkeni gerekmez.

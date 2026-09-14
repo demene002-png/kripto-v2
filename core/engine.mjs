@@ -17,7 +17,7 @@ export function resetTestAccount(a,now=Date.now()) {
   if(a.positions.length)throw Error('Önce tüm açık pozisyonları kapatın. Açık işlem varken test bakiyesi yenilenemez.');
   const keptTrades=[...(a.trades||[])];
   a.balance=1000;a.peak=1000;a.day=dayKey(now);a.dayStartEquity=1000;
-  a.pendingEntries=[];a.signals=[];a.curve=[{t:now,equity:1000}];a.scanCursor=0;
+  a.pendingEntries=[];a.curve=[{t:now,equity:1000}];a.scanCursor=0;
   a.lastRun=null;a.lastProtectionAt=null;a.nextScanAt=null;a.lastError=null;a.status='Yeni 1.000 USDT test dönemi başladı';a.circuit=null;
   a.trades=keptTrades;
   a.events.push({id:`reset:${now}`,kind:'RESET',at:now,amount:1000,previousTradeCount:keptTrades.length});
