@@ -1,5 +1,6 @@
 import {readJson,publicConfig} from './http.js';
 import {pageMayCheck,nextCheckAt} from './automation.js';
+import {formatPrice} from './format.js';
 const $=s=>document.querySelector(s), fmt=(x,d=2)=>Number(x).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const money=x=>`${fmt(x)} USDT`,date=x=>new Date(x).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -42,7 +43,7 @@ function render(){
   const wait=Math.max(0,Math.ceil((nextCheckAt(state)-Date.now())/1000));
   $('#auto-detail').textContent=preview?'Önizlemede otomatik kontrol yapılmaz.':`Sayfa açıkken otomatik kontrol · ${wait?`Sonraki kontrol yaklaşık ${wait} sn sonra`:'Kontrol sırası geldi'} · Sayfa kapalıyken Supabase zamanlayıcısı gerekir.`;
   chart(state.curve);$('#position-count').textContent=state.positions.length;$('#positions-empty').classList.toggle('hidden',!!state.positions.length);
-  $('#position-rows').innerHTML=state.positions.map(p=>`<tr><td><b>${escape(p.symbol)}</b><small class="${p.side===1?'green':'red'}">${p.side===1?'Yükseliş':'Düşüş'} · ${p.leverage}x</small></td><td>${fmt(p.margin)}<small>${fmt(p.qty*p.entry)} USDT büyüklük</small></td><td>${fmt(p.entry,4)}<small>${fmt(p.mark,4)} · ${date(p.markTime)}</small></td><td>${fmt(p.stop,4)}<small>${fmt(p.target,4)}</small></td><td>${fmt(p.liquidation,4)}<small>Yaklaşık model</small></td><td class="${color(p.net)}">${sign(p.net)}</td><td><button class="secondary close-position" data-id="${escape(p.id)}">Pozisyonu kapat</button></td></tr>`).join('');
+  $('#position-rows').innerHTML=state.positions.map(p=>`<tr><td><b>${escape(p.symbol)}</b><small class="${p.side===1?'green':'red'}">${p.side===1?'Yükseliş':'Düşüş'} · ${p.leverage}x</small></td><td>${fmt(p.margin)}<small>${fmt(p.qty*p.entry)} USDT büyüklük</small></td><td>${formatPrice(p.entry)}<small>${formatPrice(p.mark)} · ${date(p.markTime)}</small></td><td>${formatPrice(p.stop)}<small>${formatPrice(p.target)}</small></td><td>${formatPrice(p.liquidation)}<small>Yaklaşık model</small></td><td class="${color(p.net)}">${sign(p.net)}</td><td><button class="secondary close-position" data-id="${escape(p.id)}">Pozisyonu kapat</button></td></tr>`).join('');
   $('#signal-rows').innerHTML=state.signals.slice(-12).reverse().map(s=>`<tr><td>${date(s.time)}</td><td><b>${escape(s.symbol)}</b></td><td class="${s.side===1?'green':'red'}">${s.side===1?'Yükseliş':'Düşüş'}</td><td>${s.score}</td><td>${s.count} / 4</td><td>${names[s.action]||escape(s.action)}<small>${escape(s.reasons.join(' · ')||'Kontrollerden geçti')}</small></td></tr>`).join('');$('#signals-empty').classList.toggle('hidden',!!state.signals.length);
   historyRows=[...state.trades.slice(-20).reverse(),...(historyCursor?historyRows:[])];renderHistory();renderSettings();
 }

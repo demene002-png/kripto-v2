@@ -115,3 +115,9 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - PGRST003 pool beklemesi yalnız sağlayıcı kodu bunu doğrularsa söylenir. Warp timeout günlüğü tek başına pool doluluğu kanıtı değildir (PostgREST #4799).
 - Sırlar/ham SQL veya yanıt metni gösterilmez. Geçerli kod ve sınırlı biçimde sb-request-id alınır. Bu sürüm teşhistir; yeni SQL, timeout artışı veya yazma tekrarı yok.
 - Testler sahte sağlayıcı yanıtları ve cron'dan güvenli kod aktarımını kapsar. Canlı doğrulama bekleniyor; önceki dağıtıma dönüş yeterli.
+# 0.1.6 — Fiyat gösterimi
+
+- Kullanıcı PUMP gibi düşük fiyatlı coinlerde dört ondalık nedeniyle aynı görünen seviyelerin düzeltilmesini istedi.
+- Yalnız açık işlemlerin entry/mark/stop/target/liquidation gösterimi ortak Türkçe formatPrice ile en fazla 12 anlamlı basamağa taşındı; gereksiz son sıfırlar eklenmez. Eksik/geçersiz fiyat çizgi olarak gösterilir.
+- Hesaplama, state, veri kaynağı, işlem kuralları ve para/komisyon biçimleri değiştirilmedi. Fiyat adımı doğrulaması veya Supabase 504 çözümü olduğu iddia edilmez.
+- Yerel temsilî fiyat kontrolü ve sözdizimi derlemesi yeterli; yeni kalıcı test eklenmedi. Canlı tarayıcı doğrulaması yapılmadı. Önceki dağıtıma dönüş yeterli, SQL yok.
