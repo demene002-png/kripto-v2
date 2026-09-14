@@ -101,3 +101,10 @@ README sırasını izleyin. SQL'i yalnız yeni Supabase projesine uygulayın. Ö
 - Yalnız Supabase GET için en fazla iki toplam deneme, her biri 5 saniye. POST mutasyonları ve Binance çağrıları otomatik tekrarlanmaz. Yanıt kaybı sonrası çift işlem riski nedeniyle yazma tekrarına izin verilmez.
 - Sınırlar, hesap kilidi ve revizyon kontrolü korunur. Şema/SQL, anahtar, bakiye, kullanıcı ayarı değişmez. Önceki dağıtıma dönüş yeterlidir.
 - Testler: okuma kurtarma ve üst sınırı, yanıt okuma zaman aşımı sonrası yazmanın tekrarlanmaması, HTTP hatasının tekrarlanmaması, gizli veri sızmaması, Binance 451, Supabase gerçek sarmalayıcı entegrasyonu. Canlı dağıtım ve bağlantı henüz doğrulanmadı.
+# 0.1.4 — Hesap kilidi beklemesi
+
+- Kullanıcının güncel 503 hatası kv2_acquire isteğinde 5 saniyelik timeout. Eşzamanlı transaction beklemesi olası; kesin canlı neden kanıtlanmadı.
+- Ayrı 004 migration mevcut hesaplarda INSERT'i atlar; SELECT FOR UPDATE NOWAIT ve fonksiyon düzeyinde 1s lock_timeout kullanır. lock_not_available null/meşgul olarak döner; alt blok değişiklikleri geri alınır. Diğer kilitler zorla kaldırılmaz.
+- HTTP acquire bütçesi 8s, diğer Supabase istekleri 5s. POST tekrar yok; lease 55s ve commit CAS aynı. SQL geri dönüş dosyası ayrı.
+- Cron bekleme durumunda önceki hatayı previousError alanında taşır. ACCOUNT_BUSY başarılı tetikleme ama atlanan turdur. Zaman aşımı hâlâ 503; Binance başarısı sayılmaz.
+- Yeni davranış Node sahte ağ yanıtlarıyla sınanır. Canlı PostgreSQL eşzamanlılık testi yapılmadı; kesin çözüm iddia edilmez.

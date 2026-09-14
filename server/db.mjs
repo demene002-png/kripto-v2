@@ -13,7 +13,7 @@ export function config() {
 }
 async function request(path,{method='GET',body,key,token}={}) {
   const operation=path.startsWith('/auth/')?'oturum doğrulama':path.includes('/rpc/kv2_acquire')?'hesap kilidi alma':path.includes('/rpc/kv2_commit')?'hesap ve işlem geçmişi kaydetme':path.includes('/rpc/kv2_release')?'hesap kilidi bırakma':method==='GET'?'kayıt okuma':'kayıt yazma';
-  const c=config();const {response:r,text}=await fetchText(c.url+path,{method,headers:{apikey:key||c.secret,...(token?{Authorization:`Bearer ${token}`} : c.secret.startsWith('eyJ')?{Authorization:`Bearer ${c.secret}`} : {}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})},{label:`Supabase — ${operation}`,timeoutMs:5000,retryRead:true});
+  const c=config();const {response:r,text}=await fetchText(c.url+path,{method,headers:{apikey:key||c.secret,...(token?{Authorization:`Bearer ${token}`} : c.secret.startsWith('eyJ')?{Authorization:`Bearer ${c.secret}`} : {}),'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})},{label:`Supabase — ${operation}`,timeoutMs:path==='/rest/v1/rpc/kv2_acquire'?8000:5000,retryRead:true});
   let data;try{data=text?JSON.parse(text):null;}catch{throw Error(`Supabase — ${operation}: yanıt okunamadı.`);}
   if(!r.ok){if(data?.message?.includes('KV2_'))throw Error(data.message);throw Error(`Supabase işlemi başarısız (${r.status}).`);}return data;
 }
@@ -26,7 +26,7 @@ export async function userId(req) {
 export async function account(uid) {const rows=await select('kv2_accounts',`user_id=eq.${uid}&select=state,revision`);return rows[0]||null;}
 export async function withAccount(uid,work) {
   const token=randomUUID();const lock=await rpc('kv2_acquire',{p_user:uid,p_token:token,p_initial:initialState()});
-  if(!lock)throw Error('Hesap üzerinde işlem sürüyor. Birkaç saniye sonra tekrar deneyin.');
+  if(!lock){const e=Error('Hesap üzerinde işlem sürüyor. Birkaç saniye sonra tekrar deneyin.');e.code='KV2_BUSY';throw e;}
   const state=lock.state;state.events=[];
   try {
     const output=await work(state,lock.revision);

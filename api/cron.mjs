@@ -1,6 +1,7 @@
 import {timingSafeEqual} from 'node:crypto';
 import {select,withAccount} from '../server/db.mjs';
 import {tick} from '../server/runner.mjs';
+import {nextCheckAt} from '../public/automation.js';
 export default async function handler(req,res) {
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST')return res.status(405).json({error:'POST gerekli.'});
@@ -11,6 +12,10 @@ export default async function handler(req,res) {
     const rows=await select('kv2_accounts','select=user_id&order=updated_at.asc&limit=1');
     if(!rows.length)return res.status(200).json({ok:true,message:'Henüz hesap yok.'});
     const r=await withAccount(rows[0].user_id,tick);
-    return res.status(r.output?.skipped?200:r.state.lastError?503:200).json({ok:r.output?.skipped?true:!r.state.lastError,skipped:!!r.output?.skipped,nextCheckAt:r.state.nextScanAt,message:r.state.lastError||r.state.status});
-  }catch(e){return res.status(503).json({error:e.message});}
+    if(r.output?.skipped)return res.status(200).json({ok:true,skipped:true,reason:'WAITING',nextCheckAt:nextCheckAt(r.state),message:'Planlanan kontrol saati bekleniyor. Bu turda piyasa verisi istenmedi.',previousError:r.state.lastError||null});
+    return res.status(r.state.lastError?503:200).json({ok:!r.state.lastError,skipped:false,nextCheckAt:nextCheckAt(r.state),message:r.state.lastError||r.state.status});
+  }catch(e){
+    if(e.code==='KV2_BUSY')return res.status(200).json({ok:true,skipped:true,reason:'ACCOUNT_BUSY',message:'Hesap başka bir işlem tarafından kullanılıyor. Bu tur atlandı; sonraki dakikada yeniden kontrol edilecek.'});
+    return res.status(503).json({error:e.message});
+  }
 }
